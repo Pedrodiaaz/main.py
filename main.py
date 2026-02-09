@@ -84,18 +84,24 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
             f_cli = st.text_input("Nombre del Cliente")
             f_cor = st.text_input("Correo del Cliente")
             f_pes = st.number_input("Peso Mensajero (Kg)", min_value=0.0, step=0.1)
+            # Modalidades solicitadas
+            f_mod = st.selectbox("Modalidad de Pago", ["Pago Completo", "Cobro Destino", "Pago en Cuotas"])
             if st.form_submit_button("Registrar en Sistema"):
                 if f_id and f_cli and f_cor:
-                    nuevo = {"ID_Barra": f_id, "Cliente": f_cli, "Correo": f_cor.lower().strip(), "Peso_Mensajero": f_pes, "Peso_Almacen": 0.0, "Validado": False, "Monto_USD": f_pes*PRECIO_POR_KG, "Estado": "RECIBIDO ALMACEN PRINCIPAL", "Pago": "PENDIENTE", "Fecha_Registro": datetime.now()}
+                    nuevo = {
+                        "ID_Barra": f_id, "Cliente": f_cli, "Correo": f_cor.lower().strip(), 
+                        "Peso_Mensajero": f_pes, "Peso_Almacen": 0.0, "Validado": False, 
+                        "Monto_USD": f_pes*PRECIO_POR_KG, "Estado": "RECIBIDO ALMACEN PRINCIPAL", 
+                        "Pago": "PENDIENTE", "Modalidad": f_mod, "Pagado_USD": 0.0, "Fecha_Registro": datetime.now()
+                    }
                     st.session_state.inventario.append(nuevo)
                     guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                    st.success(f"✅ Guía {f_id} registrada.")
+                    st.success(f"✅ Guía {f_id} registrada como {f_mod}.")
 
-    # B. VALIDACIÓN (CORREGIDA)
+    # B. VALIDACIÓN
     with t_val:
         st.subheader("Báscula de Almacén")
-        # Filtramos solo los que NO han sido validados
-        pendientes = [p for p in st.session_state.inventario if p.get('Validado') == False]
+        pendientes = [p for p in st.session_state.inventario if not p.get('Validado')]
         if pendientes:
             guia_v = st.selectbox("Seleccione Guía para Pesar:", [p["ID_Barra"] for p in pendientes])
             paq = next(p for p in pendientes if p["ID_Barra"] == guia_v)
@@ -110,25 +116,21 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                     st.error(f"⚠️ ¡ALERTA! Diferencia crítica de peso detectada.")
                 st.success("✅ Peso validado y actualizado.")
                 st.rerun()
-        else: st.info("No hay paquetes pendientes de validación en almacén.")
+        else: st.info("No hay paquetes pendientes de validación.")
 
     # C. COBROS
     with t_cob:
-        st.subheader("Estado de Cuentas")
+        st.subheader("Gestión de Cobros")
         if st.session_state.inventario:
-            df_c = pd.DataFrame(st.session_state.inventario)
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown("### 🟢 PAGADOS")
-                st.dataframe(df_c[df_c['Pago'] == 'PAGADO'][['ID_Barra', 'Monto_USD']], hide_index=True)
-            with c2:
-                st.markdown("### 🟡 PENDIENTES")
-                df_p = df_c[df_c['Pago'] == 'PENDIENTE']
-                st.dataframe(df_p[['ID_Barra', 'Monto_USD']], hide_index=True)
-                for idx, r in df_p.iterrows():
-                    if st.button(f"Marcar Pago {r['ID_Barra']}", key=f"pay_{idx}"):
-                        for p in st.session_state.inventario:
-                            if p['ID_Barra'] == r['ID_Barra']: p['Pago'] = 'PAGADO'
+            df_p = [p for p in st.session_state.inventario if p['Pago'] == 'PENDIENTE']
+            for p in df_p:
+                with st.expander(f"Guía: {p['ID_Barra']} - {p['Cliente']} ({p['Modalidad']})"):
+                    restante = p['Monto_USD'] - p.get('Pagado_USD', 0.0)
+                    st.write(f"Total: ${p['Monto_USD']:.2f} | Falta: ${restante:.2f}")
+                    monto_pago = st.number_input(f"Monto a pagar para {p['ID_Barra']}", min_value=0.0, max_value=float(restante), key=f"pay_in_{p['ID_Barra']}")
+                    if st.button(f"Registrar Pago", key=f"btn_pay_{p['ID_Barra']}"):
+                        p['Pagado_USD'] = p.get('Pagado_USD', 0.0) + monto_pago
+                        if p['Pagado_USD'] >= p['Monto_USD']: p['Pago'] = 'PAGADO'
                         guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.rerun()
 
     # D. ESTADOS
@@ -147,63 +149,24 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
         col_a1, col_a2 = st.columns([3, 1])
         with col_a1: st.subheader("Auditoría General")
         with col_a2: ver_p = st.checkbox("🗑️ Papelera")
-        
         if ver_p:
-            if st.session_state.papelera:
-                st.dataframe(pd.DataFrame(st.session_state.papelera), use_container_width=True)
-                guia_res = st.selectbox("Restaurar:", [p["ID_Barra"] for p in st.session_state.papelera])
-                if st.button("♻️ Restaurar"):
-                    paq_r = next(p for p in st.session_state.papelera if p["ID_Barra"] == guia_res)
-                    st.session_state.inventario.append(paq_r)
-                    st.session_state.papelera = [p for p in st.session_state.papelera if p["ID_Barra"] != guia_res]
-                    guardar_datos(st.session_state.inventario, ARCHIVO_DB); guardar_datos(st.session_state.papelera, ARCHIVO_PAPELERA); st.rerun()
+            if st.session_state.papelera: st.dataframe(pd.DataFrame(st.session_state.papelera), use_container_width=True)
             else: st.info("Papelera vacía.")
         else:
             busq = st.text_input("🔍 Buscar:", key="aud_search")
             df_aud = pd.DataFrame(st.session_state.inventario)
             if busq: df_aud = df_aud[df_aud['ID_Barra'].astype(str).str.contains(busq, case=False)]
             st.dataframe(df_aud, use_container_width=True)
-            st.write("---")
-            guia_ed = st.selectbox("Editar ID:", [p["ID_Barra"] for p in st.session_state.inventario], key="edit_box")
-            paq_ed = next((p for p in st.session_state.inventario if p["ID_Barra"] == guia_ed), None)
-            if paq_ed:
-                c1, c2 = st.columns(2)
-                with c1: 
-                    new_id = st.text_input("ID", value=paq_ed['ID_Barra'])
-                    new_cli = st.text_input("Cliente", value=paq_ed['Cliente'])
-                with c2:
-                    new_pes = st.number_input("Peso", value=float(paq_ed['Peso_Almacen']))
-                    new_pago = st.selectbox("Pago", ["PENDIENTE", "PAGADO"], index=0 if paq_ed['Pago']=="PENDIENTE" else 1)
-                b_save, b_del = st.columns(2)
-                with b_save:
-                    if st.button("💾 Guardar"):
-                        paq_ed.update({'ID_Barra': new_id, 'Cliente': new_cli, 'Peso_Almacen': new_pes, 'Pago': new_pago, 'Monto_USD': new_pes*PRECIO_POR_KG})
-                        guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.rerun()
-                with b_del:
-                    st.markdown('<div class="btn-eliminar">', unsafe_allow_html=True)
-                    if st.button("🗑️ Eliminar"):
-                        st.session_state.papelera.append(paq_ed)
-                        st.session_state.inventario = [p for p in st.session_state.inventario if p["ID_Barra"] != guia_ed]
-                        guardar_datos(st.session_state.inventario, ARCHIVO_DB); guardar_datos(st.session_state.papelera, ARCHIVO_PAPELERA); st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
 
-    # F. RESUMEN (CORREGIDO)
+    # F. RESUMEN
     with t_res:
-        st.subheader("Panel de Control Operativo")
+        st.subheader("Panel Operativo")
         if st.session_state.inventario:
             df_res = pd.DataFrame(st.session_state.inventario)
             m1, m2, m3 = st.columns(3)
-            # Métricas calculadas sobre Peso_Almacen para mayor precisión
             m1.metric("Kg Validados", f"{df_res['Peso_Almacen'].sum():.1f}")
             m2.metric("Paquetes Activos", len(df_res))
-            m3.metric("Recaudado (Cash)", f"${df_res[df_res['Pago']=='PAGADO']['Monto_USD'].sum():.2f}")
-            
-            for estado in ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "ENTREGADO"]:
-                df_f = df_res[df_res['Estado'] == estado]
-                st.markdown(f'<div class="state-header">📦 {estado} ({len(df_f)})</div>', unsafe_allow_html=True)
-                if not df_f.empty:
-                    st.dataframe(df_f[['ID_Barra', 'Cliente', 'Peso_Almacen', 'Pago', 'Monto_USD']], hide_index=True, use_container_width=True)
-        else: st.info("No hay datos para mostrar en el resumen.")
+            m3.metric("Recaudado", f"${df_res['Pagado_USD'].sum():.2f}")
 
 # --- 5. PANEL DEL CLIENTE ---
 elif st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "cliente":
@@ -213,27 +176,38 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
     mis_p = [p for p in st.session_state.inventario if str(p.get('Correo', '')).lower() == u_mail]
     
     if not mis_p:
-        st.markdown('<div class="info-msg">Por el momento no tienes paquetes asociados a tu perfil, si tu paquete fue recibido recientemente por nuestro equipo de trabajo pronto te reflejaremos de acuerdo a lo entregado</div>', unsafe_allow_html=True)
+        st.info("No tienes paquetes asociados a tu cuenta.")
     else:
-        st.subheader("📋 Mis Envíos y Facturación")
         for p in mis_p:
             pago_s = p.get('Pago', 'PENDIENTE')
             badge = "badge-paid" if pago_s == "PAGADO" else "badge-debt"
             txt = "💰 PAGADO" if pago_s == "PAGADO" else "⚠️ PENDIENTE"
-            peso_f = p.get('Peso_Almacen', 0.0) if p.get('Validado') else p.get('Peso_Mensajero', 0.0)
             
+            # Lógica de la Barra de Progreso
+            total = p['Monto_USD']
+            abonado = p.get('Pagado_USD', 0.0)
+            progreso = (abonado / total) if total > 0 else 0.0
+
             st.markdown(f"""
                 <div class="p-card">
                     <div style="display: flex; justify-content: space-between;">
                         <div>
                             <h3 style="margin:0; color:#1e3a8a;">Guía: {p['ID_Barra']}</h3>
-                            <p style="margin:5px 0;">Estatus: <b>{p['Estado']}</b></p>
+                            <p style="margin:5px 0;">Estado: <b>{p['Estado']}</b> | Modalidad: {p.get('Modalidad', 'N/A')}</p>
                         </div>
                         <div class="{badge}">{txt}</div>
                     </div>
-                    <div style="display: flex; justify-content: space-around; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-                        <div><small>Peso</small><br><b>{peso_f:.2f} Kg</b></div>
-                        <div><small>Total</small><br><b>${p['Monto_USD']:.2f}</b></div>
+            """, unsafe_allow_html=True)
+            
+            # Mostrar barra de progreso
+            st.write(f"Progreso de Pago: {int(progreso*100)}%")
+            st.progress(progreso)
+            
+            st.markdown(f"""
+                    <div style="display: flex; justify-content: space-around; margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+                        <div><small>Peso</small><br><b>{p['Peso_Almacen'] if p['Validado'] else p['Peso_Mensajero']:.2f} Kg</b></div>
+                        <div><small>Total</small><br><b>${total:.2f}</b></div>
+                        <div><small>Abonado</small><br><b>${abonado:.2f}</b></div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -241,12 +215,6 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
 # --- 6. ACCESO ---
 else:
     t1, t2 = st.tabs(["Ingresar", "Registro"])
-    with t2:
-        with st.form("signup"):
-            n = st.text_input("Nombre"); e = st.text_input("Correo"); p = st.text_input("Clave", type="password")
-            if st.form_submit_button("Crear"):
-                st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
-                guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("Listo.")
     with t1:
         le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
         if st.button("Iniciar Sesión"):
@@ -254,3 +222,9 @@ else:
                 st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
             u = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
             if u: st.session_state.usuario_identificado = u; st.rerun()
+    with t2:
+        with st.form("signup"):
+            n = st.text_input("Nombre"); e = st.text_input("Correo"); p = st.text_input("Clave", type="password")
+            if st.form_submit_button("Crear"):
+                st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
+                guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("Listo.")
