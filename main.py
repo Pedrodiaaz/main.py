@@ -4,27 +4,78 @@ import os
 import hashlib
 from datetime import datetime, timedelta
 
-# --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
+# --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL (ESTILO GLASSMORPHISM) ---
 st.set_page_config(page_title="IACargo.io | Evolution System", layout="wide", page_icon="🚀")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #f4f7f9; }
+    /* Fondo general con degradado suave */
+    .stApp {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+
+    /* Tarjetas estilo Cristal (Glassmorphism) */
     .p-card {
-        background: white; padding: 22px; border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 6px solid #0080FF;
-        margin-bottom: 18px; transition: transform 0.3s ease;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 25px;
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
     }
-    .p-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-    .welcome-text { color: #1E3A8A; font-weight: 800; font-size: 28px; margin-bottom: 15px; }
-    .stButton>button {
-        width: 100%; border-radius: 10px; height: 3em;
-        background-color: #0080FF; color: white; border: none; font-weight: 600;
+    .p-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+        background: rgba(255, 255, 255, 0.9);
     }
+
+    /* Encabezados de Sección */
     .state-header {
-        background: linear-gradient(90deg, #1E3A8A 0%, #0080FF 100%);
-        color: white; padding: 12px 20px; border-radius: 10px;
-        margin-top: 25px; margin-bottom: 12px; font-weight: 600;
+        background: linear-gradient(90deg, #1e3a8a 0%, #0080ff 100%);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 15px;
+        margin-top: 30px;
+        margin-bottom: 15px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        box-shadow: 0 4px 15px rgba(0, 128, 255, 0.2);
+    }
+
+    /* Botones Modernos */
+    .stButton>button {
+        width: 100%;
+        border-radius: 12px;
+        height: 3.2em;
+        background: linear-gradient(90deg, #0080ff 0%, #0059b3 100%);
+        color: white;
+        border: none;
+        font-weight: 700;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .stButton>button:hover {
+        box-shadow: 0 5px 15px rgba(0, 128, 255, 0.4);
+        transform: scale(1.02);
+    }
+
+    /* Texto de Bienvenida */
+    .welcome-text {
+        color: #1e3a8a;
+        font-weight: 900;
+        font-size: 35px;
+        margin-bottom: 20px;
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Sidebar Estilizada */
+    [data-testid="stSidebar"] {
+        background-color: rgba(255, 255, 255, 0.5);
+        border-right: 1px solid rgba(255, 255, 255, 0.2);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -153,55 +204,40 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
 
     with t_aud:
         st.subheader("Historial y Corrección de Errores")
-        busq_aud = st.text_input("🔍 Buscar guía para auditar o editar:", key="aud_search")
-        
+        busq_aud = st.text_input("🔍 Buscar guía:", key="aud_search")
         if st.session_state.inventario:
-            # Mostramos la tabla general filtrada
             df_aud = pd.DataFrame(st.session_state.inventario)
             if busq_aud:
                 df_aud = df_aud[df_aud['ID_Barra'].astype(str).str.contains(busq_aud, case=False)]
             st.dataframe(df_aud, use_container_width=True)
-            
             st.write("---")
             st.markdown("### 🛠️ Panel de Edición Rápida")
-            # Selección de paquete a editar
-            guia_a_editar = st.selectbox("Seleccione el ID de Guía que desea CORREGIR:", [p["ID_Barra"] for p in st.session_state.inventario], key="edit_box")
+            guia_a_editar = st.selectbox("Seleccione ID:", [p["ID_Barra"] for p in st.session_state.inventario], key="edit_box")
             paq_edit = next((p for p in st.session_state.inventario if p["ID_Barra"] == guia_a_editar), None)
-            
             if paq_edit:
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
-                    new_id = st.text_input("Editar ID/Tracking", value=paq_edit['ID_Barra'])
+                    new_id = st.text_input("Editar ID", value=paq_edit['ID_Barra'])
                     new_cli = st.text_input("Editar Cliente", value=paq_edit['Cliente'])
                     new_cor = st.text_input("Editar Correo", value=paq_edit['Correo'])
                 with col_e2:
-                    new_pes_m = st.number_input("Corregir Peso Mensajero (Kg)", value=float(paq_edit.get('Peso_Mensajero', 0.0)))
-                    new_pes_a = st.number_input("Corregir Peso Almacén (Kg)", value=float(paq_edit.get('Peso_Almacen', 0.0)))
-                    new_pago = st.selectbox("Estado de Pago", ["PENDIENTE", "PAGADO"], index=0 if paq_edit['Pago'] == "PENDIENTE" else 1)
-                
-                if st.button("💾 Guardar Cambios en Auditoría"):
-                    paq_edit['ID_Barra'] = new_id
-                    paq_edit['Cliente'] = new_cli
-                    paq_edit['Correo'] = new_cor.lower().strip()
-                    paq_edit['Peso_Mensajero'] = new_pes_m
-                    paq_edit['Peso_Almacen'] = new_pes_a
-                    paq_edit['Pago'] = new_pago
-                    # Recalcular monto por si cambió el peso
+                    new_pes_m = st.number_input("Peso Mensajero", value=float(paq_edit.get('Peso_Mensajero', 0.0)))
+                    new_pes_a = st.number_input("Peso Almacén", value=float(paq_edit.get('Peso_Almacen', 0.0)))
+                    new_pago = st.selectbox("Estado Pago", ["PENDIENTE", "PAGADO"], index=0 if paq_edit['Pago'] == "PENDIENTE" else 1)
+                if st.button("💾 Guardar Cambios"):
+                    paq_edit.update({'ID_Barra': new_id, 'Cliente': new_cli, 'Correo': new_cor.lower().strip(), 'Peso_Mensajero': new_pes_m, 'Peso_Almacen': new_pes_a, 'Pago': new_pago})
                     paq_edit['Monto_USD'] = new_pes_a * PRECIO_POR_KG if new_pes_a > 0 else new_pes_m * PRECIO_POR_KG
-                    
                     guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                    st.success(f"✅ Paquete {new_id} actualizado correctamente.")
-                    st.rerun()
+                    st.success("Actualizado."); st.rerun()
 
     with t_res:
-        st.subheader("Análisis de Operación por Fase")
+        st.subheader("Análisis de Operación")
         if st.session_state.inventario:
             df = pd.DataFrame(st.session_state.inventario)
             m1, m2, m3 = st.columns(3)
             m1.metric("Kg Validados", f"{df['Peso_Almacen'].sum():.1f} Kg")
             m2.metric("Total Paquetes", len(df))
             m3.metric("Recaudado USD", f"${df[df['Pago']=='PAGADO']['Monto_USD'].sum():.2f}")
-            
             estados = [("RECIBIDO ALMACEN PRINCIPAL", "📦"), ("EN TRANSITO", "✈️"), ("ENTREGADO", "🏠")]
             for est, ico in estados:
                 df_f = df[df['Estado'] == est]
@@ -216,25 +252,21 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
     c_izq, c_der = st.columns([2, 1])
     c_izq.subheader("📋 Mis Envíos")
     search = c_der.text_input("🔍 Buscar Guía")
-    
     u_mail = str(u.get('correo', '')).lower()
     mis_p = [p for p in st.session_state.inventario if str(p.get('Correo', '')).lower() == u_mail]
-    
     if search:
         mis_p = [p for p in mis_p if p.get('ID_Barra') and search.lower() in str(p.get('ID_Barra')).lower()]
-    
     if mis_p:
         for p in mis_p:
             fecha_p = str(p.get('Fecha_Registro', 'N/A'))[:10]
-            with st.container():
-                st.markdown(f"""
+            st.markdown(f"""
                 <div class="p-card">
                     <h3 style='margin:0; color:#1E3A8A;'>Guía: {p.get('ID_Barra', 'N/A')}</h3>
                     <p style='margin:5px 0;'>Estatus: <b>{p.get('Estado', 'En proceso')}</b></p>
-                    <p style='margin:0; font-size:14px; color:#666;'>Fecha de registro: {fecha_p}</p>
+                    <p style='margin:0; font-size:14px; color:#666;'>Fecha: {fecha_p}</p>
                 </div>
                 """, unsafe_allow_html=True)
-    else: st.info("Sin paquetes registrados.")
+    else: st.info("Sin registros.")
 
 # --- 6. ACCESO ---
 else:
@@ -243,25 +275,18 @@ else:
         with t_s:
             with st.form("signup"):
                 n = st.text_input("Nombre"); e = st.text_input("Correo"); p = st.text_input("Clave", type="password")
-                if st.form_submit_button("Crear Cuenta"):
-                    if n and e and p:
-                        st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
-                        guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS)
-                        st.success("Registrado correctamente.")
+                if st.form_submit_button("Crear"):
+                    st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
+                    guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("Registrado.")
         with t_l:
             le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
             if st.button("Iniciar Sesión"):
                 usr = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
-                if usr:
-                    st.session_state.usuario_identificado = usr
-                    st.rerun()
-                else: st.error("Credenciales incorrectas.")
+                if usr: st.session_state.usuario_identificado = usr; st.rerun()
+                else: st.error("Error.")
     else:
-        st.subheader("Acceso Administrativo")
-        ad_u = st.text_input("Usuario Admin")
-        ad_p = st.text_input("Pass Admin", type="password")
-        if st.button("Entrar como Admin"):
+        st.subheader("Acceso Admin")
+        ad_u = st.text_input("Usuario"); ad_p = st.text_input("Clave", type="password")
+        if st.button("Entrar"):
             if ad_u == "admin" and ad_p == "admin123":
-                st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}
-                st.rerun()
-            else: st.error("No autorizado.")
+                st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
