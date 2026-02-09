@@ -11,7 +11,7 @@ from email.mime.multipart import MIMEMultipart
 # --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
 st.set_page_config(page_title="IACargo.io | Evolution", layout="wide", page_icon="🚀")
 
-# Estilo UI/UX Profesional
+# Estilo Personalizado (UI/UX Moderna)
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
@@ -102,6 +102,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # Lógica del Stepper Visual
                 est = p['Estado']
                 prog, p1, p2, p3 = 0, "⚪", "⚪", "⚪"
                 if "RECIBIDO" in est: prog, p1 = 33, "🔵"
@@ -113,38 +114,47 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                 c1.markdown(f"{p1} **RECIBIDO**")
                 c2.markdown(f"{p2} **EN TRÁNSITO**")
                 c3.markdown(f"{p3} **ENTREGADO**")
-                st.write(f"**Detalles:** Monto a pagar: ${p['Monto_USD']} | Pago: {p['Pago']}")
+                st.write(f"**Detalles:** Monto a pagar: ${p['Monto_USD']} | Estatus de Pago: {p['Pago']}")
                 st.write("---")
     else:
         st.info("No hay envíos registrados vinculados a este correo.")
 
-# --- 5. PANEL DE ADMINISTRACIÓN ---
+# --- 5. PANEL DE ADMINISTRACIÓN (DASHBOARD + GESTIÓN) ---
 
 elif st.session_state.usuario_identificado and st.session_state.usuario_identificado['rol'] == "admin":
-    st.title("⚙️ Consola de Comando Admin")
+    st.title("⚙️ Consola de Comando Administrativo")
     t_res, t_reg, t_pes, t_cob, t_aud = st.tabs(["📊 Resumen", "📝 Registro", "⚖️ Estados", "💰 Cobros", "🔍 Auditoría"])
 
+    # ANALÍTICA DE NEGOCIO
     with t_res:
         if st.session_state.inventario:
             df_res = pd.DataFrame(st.session_state.inventario)
             df_res['Fecha_Registro'] = pd.to_datetime(df_res['Fecha_Registro'])
-            periodo = st.selectbox("Periodo:", ["Semanal", "Mensual", "Anual"])
+            
+            periodo = st.selectbox("Periodo de Evaluación:", ["Semanal", "Mensual", "Anual"])
             dias_map = {"Semanal": 7, "Mensual": 30, "Anual": 365}
             df_f = df_res[df_res['Fecha_Registro'] >= (datetime.now() - timedelta(days=dias_map[periodo]))]
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Clientes", len(df_f['Correo'].unique()))
-            m2.metric("Kilos", f"{df_f['Peso_Origen'].sum():.1f}")
-            m3.metric("Recaudado", f"${df_f[df_f['Pago']=='PAGADO']['Monto_USD'].sum():.2f}")
-            st.bar_chart(df_f.groupby(df_f['Fecha_Registro'].dt.date).agg({'Peso_Origen':'sum', 'Monto_USD':'sum'}))
-        else: st.info("Sin datos.")
 
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Clientes Activos", len(df_f['Correo'].unique()))
+            m2.metric("Masa Total (Kg)", f"{df_f['Peso_Origen'].sum():.1f}")
+            m3.metric("Recaudado ($)", f"${df_f[df_f['Pago']=='PAGADO']['Monto_USD'].sum():.2f}")
+
+            st.write("### Crecimiento y Relación Operativa")
+            chart_data = df_f.groupby(df_f['Fecha_Registro'].dt.date).agg({'ID_Barra':'count', 'Peso_Origen':'sum', 'Monto_USD':'sum'}).rename(columns={'ID_Barra': 'Guías', 'Peso_Origen': 'Kilos', 'Monto_USD': 'Dólares'})
+            st.bar_chart(chart_data)
+
+            st.write("### Top 5 Aliados (Clientes)")
+            st.table(df_f.groupby('Cliente')['Peso_Origen'].sum().sort_values(ascending=False).head(5))
+
+    # REGISTRO CON LIMPIEZA
     with t_reg:
         with st.form("admin_reg_form", clear_on_submit=True):
             st.subheader("Entrada de Mercancía")
             c1, c2 = st.columns(2)
-            id_i = c1.text_input("ID Tracking")
-            cl_i = c1.text_input("Cliente")
-            co_i = c2.text_input("Correo")
+            id_i = c1.text_input("ID Tracking / Guía")
+            cl_i = c1.text_input("Nombre del Cliente")
+            co_i = c2.text_input("Correo para Seguimiento")
             pe_i = c2.number_input("Peso (Kg)", min_value=0.0)
             if st.form_submit_button("Finalizar Registro"):
                 st.session_state.inventario.append({
@@ -154,77 +164,86 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                     "Fecha_Registro": datetime.now()
                 })
                 guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                st.success("✅ Registrado.")
+                st.success("✅ Registro finalizado con éxito.")
 
+    # GESTIÓN DE ESTADOS Y NOTIFICACIONES
     with t_pes:
-        st.subheader("Estatus y Notificaciones")
+        st.subheader("Estatus y Pesaje de Almacén")
         if st.session_state.inventario:
-            sel_id = st.selectbox("Guía:", [p["ID_Barra"] for p in st.session_state.inventario])
-            nuevo_est = st.selectbox("Estado:", ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "ENTREGADO"])
-            if st.button("Actualizar y Notificar"):
+            sel_id = st.selectbox("Seleccione Paquete:", [p["ID_Barra"] for p in st.session_state.inventario])
+            nuevo_est = st.selectbox("Actualizar Estado a:", ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "ENTREGADO"])
+            if st.button("Actualizar Estatus y Notificar Cliente"):
                 for p in st.session_state.inventario:
                     if p["ID_Barra"] == sel_id:
                         p["Estado"] = nuevo_est
                         guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                        html = f"<h2>Actualización</h2><p>Paquete <b>{sel_id}</b> está: <b>{nuevo_est}</b>.</p>"
-                        enviar_correo(p['Correo'], "Estatus IACargo.io", html)
-                        st.success("✅ Estatus actualizado.")
+                        html = f"<h2>Actualización IACargo.io</h2><p>Tu paquete <b>{sel_id}</b> ahora está: <b>{nuevo_est}</b>.</p>"
+                        enviar_correo(p['Correo'], f"Estado de Envío: {sel_id}", html)
+                        st.success("✅ Estatus actualizado y cliente notificado.")
                         st.rerun()
 
+    # COBROS CON EXPORTACIÓN
     with t_cob:
-        sub1, sub2 = st.tabs(["❌ Por Cobrar", "✅ Pagados"])
-        with sub1:
+        sub_tab1, sub_tab2 = st.tabs(["❌ Por Cobrar", "✅ Historial Pagados"])
+        with sub_tab1:
             deuda = [p for p in st.session_state.inventario if p["Pago"] == "PENDIENTE"]
             for idx, p in enumerate(deuda):
-                c1, c2 = st.columns([3, 1])
-                c1.warning(f"{p['ID_Barra']} | {p['Cliente']} | ${p['Monto_USD']}")
-                if c2.button("Cobrar", key=f"p_btn_{idx}"):
+                col1, col2 = st.columns([3, 1])
+                col1.warning(f"ID: {p['ID_Barra']} | Cliente: {p['Cliente']} | ${p['Monto_USD']}")
+                if col2.button("Confirmar Pago", key=f"pay_btn_{idx}"):
                     p["Pago"] = "PAGADO"
                     guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                    enviar_correo(p['Correo'], "Pago Recibido", f"Confirmamos pago de {p['ID_Barra']}")
+                    html = f"<h2>Confirmación de Pago</h2><p>Hemos recibido el pago de tu guía <b>{p['ID_Barra']}</b>. ¡Gracias!</p>"
+                    enviar_correo(p['Correo'], "Pago Recibido - IACargo.io", html)
+                    st.success("✅ Pago registrado.")
                     st.rerun()
-        with sub2:
+        with sub_tab2:
             pagados = [p for p in st.session_state.inventario if p["Pago"] == "PAGADO"]
             if pagados:
-                df_p = pd.DataFrame(pagados)
-                st.dataframe(df_p, use_container_width=True)
-                st.download_button("📥 Excel", df_p.to_csv(index=False).encode('utf-8'), "Cierre.csv", "text/csv")
+                df_pagados = pd.DataFrame(pagados)
+                st.dataframe(df_pagados[["ID_Barra", "Cliente", "Monto_USD", "Fecha_Registro"]], use_container_width=True)
+                st.download_button("📥 Exportar a Excel (CSV)", df_pagados.to_csv(index=False).encode('utf-8'), "Cierre_Caja_IACargo.csv", "text/csv")
 
-# --- 6. ACCESO CLIENTES ---
+# --- 6. ACCESO LOGIN / REGISTRO CON OTP ---
+
 elif rol_vista == "🔑 Portal Clientes":
-    st.title("Portal Clientes")
-    l1, l2 = st.tabs(["Entrar", "Crear Cuenta"])
+    st.title("Acceso Portal Clientes")
+    l1, l2 = st.tabs(["Iniciar Sesión", "Crear Nueva Cuenta"])
+    
     with l2:
         if not st.session_state.otp_generado:
-            cr = st.text_input("Correo")
-            pr = st.text_input("Clave", type="password")
-            if st.button("Enviar OTP"):
-                otp = str(random.randint(100000, 999999))
-                if enviar_correo(cr, "Código OTP", f"Tu código: {otp}"):
-                    st.session_state.otp_generado = otp
+            cr = st.text_input("Correo electrónico corporativo/personal")
+            pr = st.text_input("Crea tu clave secreta", type="password")
+            if st.button("Solicitar Código de Activación"):
+                otp_code = str(random.randint(100000, 999999))
+                html_otp = f"<h3>Código de Activación</h3><p>Tu código para IACargo.io es: <b>{otp_code}</b></p>"
+                if enviar_correo(cr, "Activa tu cuenta - IACargo.io", html_otp):
+                    st.session_state.otp_generado = otp_code
                     st.session_state.datos_pre = {"correo": cr, "password": hash_password(pr)}
                     st.rerun()
         else:
-            v_otp = st.text_input("Código")
-            if st.button("Verificar"):
+            v_otp = st.text_input("Ingresa el código OTP enviado")
+            if st.button("Finalizar y Activar"):
                 if v_otp == st.session_state.otp_generado:
                     st.session_state.usuarios.append({**st.session_state.datos_pre, "rol": "cliente"})
                     guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS)
                     st.session_state.otp_generado = None
-                    st.success("✅ Cuenta activa.")
+                    st.success("✅ Cuenta activada. Procede al Login.")
+                else: st.error("Código incorrecto.")
     with l1:
-        lc, lp = st.text_input("Correo", key="lc"), st.text_input("Clave", type="password", key="lp")
-        if st.button("Entrar"):
+        lc, lp = st.text_input("Correo", key="l_c"), st.text_input("Clave", type="password", key="l_p")
+        if st.button("Entrar al Sistema"):
             u = next((u for u in st.session_state.usuarios if u['correo'] == lc and u['password'] == hash_password(lp)), None)
             if u: 
                 st.session_state.usuario_identificado = u
                 st.rerun()
+            else: st.error("Credenciales no válidas.")
 
 elif rol_vista == "🔐 Administración":
     st.title("Acceso Staff")
-    admin_u = st.text_input("Usuario")
-    admin_p = st.text_input("Clave", type="password")
-    if st.button("Acceder"):
+    admin_u = st.text_input("Usuario Master")
+    admin_p = st.text_input("Clave Maestra", type="password")
+    if st.button("Acceder a Consola"):
         if admin_u == "admin" and admin_p == "admin123":
-            st.session_state.usuario_identificado = {"correo": "ADMIN", "rol": "admin"}
+            st.session_state.usuario_identificado = {"correo": "ADMIN_SYSTEM", "rol": "admin"}
             st.rerun()
