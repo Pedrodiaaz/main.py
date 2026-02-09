@@ -10,7 +10,7 @@ st.set_page_config(
 
 # --- CONFIGURACIÓN DEL LOGO ---
 # Reemplaza TU_USUARIO_GITHUB por tu nombre de usuario en GitHub
-url_logo = "https://raw.githubusercontent.com/Pedrodiaaz/main.py/iacargo/main/logo.png"
+url_logo = "https://raw.githubusercontent.com/Pedrodiaaz/iacargo/main/logo.png"
 
 with st.sidebar:
     try:
