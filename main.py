@@ -219,50 +219,53 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                 st.markdown(f'<div class="state-header">{ico} {est} ({len(df_f)})</div>', unsafe_allow_html=True)
                 if not df_f.empty: st.dataframe(df_f[['ID_Barra', 'Cliente', 'Peso_Almacen', 'Pago']], hide_index=True, use_container_width=True)
 
-# --- 5. PANEL DEL CLIENTE ---
+# --- 5. PANEL DEL CLIENTE (ACTUALIZADO CON FILTROS Y PAGOS) ---
 elif st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "cliente":
     u = st.session_state.usuario_identificado
     st.markdown(f'<div class="welcome-text">Bienvenido nuevamente, {u["nombre"]}</div>', unsafe_allow_html=True)
     
-    c_izq, c_der = st.columns([2, 1])
-    c_izq.subheader("📋 Estado de mis Envíos")
-    search = c_der.text_input("🔍 Buscar por Número de Guía")
-    
+    # Filtrar paquetes del cliente
     mis_p = [p for p in st.session_state.inventario if p.get('Correo', '').lower() == u['correo'].lower()]
-    if search: mis_p = [p for p in mis_p if search.lower() in p['ID_Barra'].lower()]
     
     if mis_p:
-        for p in mis_p:
-            with st.container():
-                st.markdown(f"""
-                <div class="p-card">
-                    <h3 style='margin:0; color:#1E3A8A;'>Guía: {p['ID_Barra']}</h3>
-                    <p style='margin:5px 0;'>Estatus: <b>{p['Estado']}</b></p>
-                    <p style='margin:0; font-size:14px; color:#666;'>Fecha: {p.get('Fecha_Registro', 'N/A')[:10]}</p>
-                </div>
-                """, unsafe_allow_html=True)
-    else: st.info("No tienes paquetes registrados en este momento.")
+        df_mis_p = pd.DataFrame(mis_p)
+        hoy = datetime.now()
+        
+        # Sincronización de lógica de pago con la del administrador
+        df_mis_p['Estatus_Pago'] = df_mis_p.apply(
+            lambda r: 'PAGADO' if r['Pago'] == 'PAGADO' else 
+            ('ATRASADO' if (hoy - pd.to_datetime(r['Fecha_Registro'])).days > 15 else 'PENDIENTE'), 
+            axis=1
+        )
 
-# --- 6. ACCESO (LOGIN / REGISTRO) ---
-else:
-    if rol_vista == "🔑 Portal Clientes":
-        t_l, t_s = st.tabs(["Ingresar", "Crear Cuenta"])
-        with t_s:
-            with st.form("signup"):
-                n = st.text_input("Nombre"); d = st.text_input("Documento ID"); e = st.text_input("Correo"); p = st.text_input("Contraseña", type="password")
-                if st.form_submit_button("Registrarme"):
-                    if n and e and p:
-                        st.session_state.usuarios.append({"nombre": n, "documento": d, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
-                        guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("✅ Cuenta creada.")
-        with t_l:
-            le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
-            if st.button("Iniciar Sesión"):
-                user = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
-                if user: st.session_state.usuario_identificado = user; st.rerun()
-                else: st.error("Acceso denegado.")
-    else:
-        ad_u = st.text_input("Admin User"); ad_p = st.text_input("Admin Pass", type="password")
-        if st.button("Acceso Administrativo"):
-            if ad_u == "admin" and ad_p == "admin123":
-                st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
-            else: st.error("No autorizado.")
+        # 📊 Métricas de resumen para el cliente (Socio)
+        c1, c2, c3 = st.columns(3)
+        total_deuda = df_mis_p[df_mis_p['Estatus_Pago'] != 'PAGADO']['Monto_USD'].sum()
+        c1.metric("Total por Pagar", f"${total_deuda:.2f}")
+        c2.metric("Paquetes en Proceso", len(df_mis_p[df_mis_p['Estado'] != 'ENTREGADO']))
+        c3.metric("Entregados", len(df_mis_p[df_mis_p['Estado'] == 'ENTREGADO']))
+
+        st.write("---")
+
+        # 🔍 Buscador y Filtro
+        col_bus, col_fil = st.columns([2, 1])
+        search = col_bus.text_input("🔍 Buscar Guía")
+        filtro_pago = col_fil.selectbox("Filtrar por estatus:", ["Todos", "Pendientes/Atrasados", "Pagados"])
+
+        # Aplicar filtros a la visualización
+        display_df = df_mis_p.copy()
+        if search:
+            display_df = display_df[display_df['ID_Barra'].str.contains(search, case=False)]
+        if filtro_pago == "Pendientes/Atrasados":
+            display_df = display_df[display_df['Estatus_Pago'] != 'PAGADO']
+        elif filtro_pago == "Pagados":
+            display_df = display_df[display_df['Estatus_Pago'] == 'PAGADO']
+
+        # 📦 Visualización de Tarjetas Dinámicas
+        for _, p in display_df.iterrows():
+            # Color dinámico: Verde (Pagado), Rojo (Atrasado), Azul/Amarillo (Pendiente)
+            border_color = "#28a745" if p['Estatus_Pago'] == 'PAGADO' else ("#dc3545" if p['Estatus_Pago'] == 'ATRASADO' else "#FFCC00")
+            
+            st.markdown(f"""
+                <div class="p-card" style="border-left: 6px solid {border_color};">
+                    <div style="display: flex; justify-content: space-between;
