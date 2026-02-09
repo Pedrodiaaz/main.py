@@ -1,15 +1,11 @@
 import streamlit as st
 import pandas as pd
 import os
-import smtplib
-import random
 import hashlib
-from datetime import datetime, timedelta
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 
 # --- 1. CONFIGURACIÓN E IDENTIDAD ---
-st.set_page_config(page_title="IACargo.io | Full Evolution", layout="wide", page_icon="🚀")
+st.set_page_config(page_title="IACargo.io | Evolution", layout="wide", page_icon="🚀")
 
 # Estilos UI/UX
 st.markdown("""
@@ -49,7 +45,7 @@ if 'inventario' not in st.session_state: st.session_state.inventario = cargar_da
 if 'usuarios' not in st.session_state: st.session_state.usuarios = cargar_datos(ARCHIVO_USUARIOS)
 if 'usuario_identificado' not in st.session_state: st.session_state.usuario_identificado = None
 
-# --- 3. BARRA LATERAL (LOGO RESTAURADO) ---
+# --- 3. BARRA LATERAL ---
 with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
@@ -64,18 +60,114 @@ with st.sidebar:
     else:
         rol_vista = st.radio("Navegación:", ["🔑 Portal Clientes", "🔐 Administración"])
     st.write("---")
-    st.caption("“La existencia es un milagro”")
+    st.caption("“No eres herramienta, eres evolución”")
 
-# --- 4. PANEL CLIENTE (CON LÍNEA DE TIEMPO) ---
-if st.session_state.usuario_identificado and st.session_state.usuario_identificado['rol'] == "cliente":
-    st.title("📦 Mi Centro de Seguimiento")
+# --- 4. PANEL ADMINISTRACIÓN ---
+if st.session_state.usuario_identificado and st.session_state.usuario_identificado['rol'] == "admin":
+    st.title("⚙️ Consola Administrativa")
+    t_res, t_reg, t_val, t_est, t_cob, t_aud = st.tabs([
+        "📊 RESUMEN", "📝 REGISTRO", "⚖️ VALIDACIÓN PESO", "✈️ ESTADOS", "💰 COBROS", "🔍 AUDITORÍA"
+    ])
+
+    # Pestaña Resumen (Sin Gráfica)
+    with t_res:
+        st.subheader("Estado General del Negocio")
+        if st.session_state.inventario:
+            df = pd.DataFrame(st.session_state.inventario)
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Kilos Totales", f"{df['Peso_Origen'].sum():.2f} Kg")
+            c2.metric("Guías en Sistema", len(df))
+            c3.metric("Recaudación Total", f"${df[df['Pago']=='PAGADO']['Monto_USD'].sum():.2f}")
+        else:
+            st.info("No hay datos suficientes para el resumen.")
+
+    # Pestaña Registro
+    with t_reg:
+        with st.form("reg_form", clear_on_submit=True):
+            f_id = st.text_input("ID Tracking / Código de Barras")
+            f_cli = st.text_input("Nombre del Cliente")
+            f_cor = st.text_input("Correo Electrónico")
+            f_pes = st.number_input("Peso Inicial (Kg)", min_value=0.0)
+            if st.form_submit_button("Registrar Paquete"):
+                nuevo = {
+                    "ID_Barra": f_id, "Cliente": f_cli, "Correo": f_cor.lower(), "Peso_Origen": f_pes,
+                    "Monto_USD": f_pes * PRECIO_POR_KG, "Estado": "RECIBIDO ALMACEN PRINCIPAL",
+                    "Pago": "PENDIENTE", "Fecha_Registro": datetime.now()
+                }
+                st.session_state.inventario.append(nuevo)
+                guardar_datos(st.session_state.inventario, ARCHIVO_DB)
+                st.success(f"✅ Guía {f_id} registrada con éxito.")
+
+    # Pestaña Validación de Peso (Nueva)
+    with t_val:
+        st.subheader("Corrección y Validación de Pesos")
+        if st.session_state.inventario:
+            ids_guias = [p["ID_Barra"] for p in st.session_state.inventario]
+            guia_v = st.selectbox("Seleccione Guía para validar:", ids_guias)
+            
+            # Buscar datos actuales
+            paquete_v = next((p for p in st.session_state.inventario if p["ID_Barra"] == guia_v), None)
+            
+            if paquete_v:
+                st.info(f"Peso actual: {paquete_v['Peso_Origen']} Kg | Monto: ${paquete_v['Monto_USD']}")
+                nuevo_peso = st.number_input("Nuevo Peso Validado (Kg)", min_value=0.0, value=float(paquete_v['Peso_Origen']))
+                
+                if st.button("Confirmar Cambio de Peso"):
+                    paquete_v['Peso_Origen'] = nuevo_peso
+                    paquete_v['Monto_USD'] = nuevo_peso * PRECIO_POR_KG
+                    guardar_datos(st.session_state.inventario, ARCHIVO_DB)
+                    st.success("✅ Peso validado y monto actualizado correctamente.")
+                    st.rerun()
+
+    # Pestaña Estados
+    with t_est:
+        if st.session_state.inventario:
+            sel = st.selectbox("Actualizar Ubicación:", [p["ID_Barra"] for p in st.session_state.inventario])
+            nuevo_e = st.selectbox("Nuevo Estado:", ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "ENTREGADO"])
+            if st.button("Cambiar Estatus"):
+                for p in st.session_state.inventario:
+                    if p["ID_Barra"] == sel:
+                        p["Estado"] = nuevo_e
+                        guardar_datos(st.session_state.inventario, ARCHIVO_DB)
+                        st.success("✅ Estatus actualizado.")
+                        st.rerun()
+
+    # Pestaña Cobros
+    with t_cob:
+        pendientes = [p for p in st.session_state.inventario if p["Pago"] == "PENDIENTE"]
+        if pendientes:
+            for idx, p in enumerate(pendientes):
+                col_a, col_b = st.columns([3, 1])
+                col_a.warning(f"Guía: {p['ID_Barra']} | Cliente: {p['Cliente']} | Monto: ${p['Monto_USD']}")
+                if col_b.button("Registrar Pago", key=f"pay_{idx}"):
+                    p["Pago"] = "PAGADO"
+                    guardar_datos(st.session_state.inventario, ARCHIVO_DB)
+                    st.rerun()
+        else:
+            st.success("No hay pagos pendientes.")
+
+    # Pestaña Auditoría
+    with t_aud:
+        st.subheader("Auditoría de Inventario")
+        if st.session_state.inventario:
+            df_aud = pd.DataFrame(st.session_state.inventario)
+            busqueda = st.text_input("🔍 Buscar por Guía o Cliente")
+            if busqueda:
+                df_aud = df_aud[(df_aud['ID_Barra'].str.contains(busqueda, case=False)) | 
+                                (df_aud['Cliente'].str.contains(busqueda, case=False))]
+            st.dataframe(df_aud, use_container_width=True)
+            st.download_button("📥 Descargar Inventario (CSV)", df_aud.to_csv(index=False).encode('utf-8'), "Inventario_IACargo.csv", "text/csv")
+
+# --- 5. PANEL CLIENTE ---
+elif st.session_state.usuario_identificado and st.session_state.usuario_identificado['rol'] == "cliente":
+    st.title("📦 Seguimiento de mi Carga")
     u_mail = st.session_state.usuario_identificado['correo'].lower()
     mis_p = [p for p in st.session_state.inventario if str(p.get('Correo', '')).lower() == u_mail]
     
     if mis_p:
         for p in mis_p:
             with st.container():
-                st.markdown(f'<div class="p-card"><h3>Guía: {p["ID_Barra"]}</h3><p>Estado: <b>{p["Estado"]}</b></p></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="p-card"><h3>Guía: {p["ID_Barra"]}</h3><p>Estatus: <b>{p["Estado"]}</b></p></div>', unsafe_allow_html=True)
                 c1, c2, c3 = st.columns(3)
                 est = p['Estado']
                 if "RECIBIDO" in est or "TRANSITO" in est or "ENTREGADO" in est:
@@ -87,88 +179,20 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                 if "ENTREGADO" in est:
                     c3.markdown('<div class="status-active">3. ENTREGADO</div>', unsafe_allow_html=True)
                 else: c3.markdown('<div class="status-inactive">3. ENTREGADO</div>', unsafe_allow_html=True)
-    else: st.info("No hay paquetes asociados.")
-
-# --- 5. PANEL ADMINISTRACIÓN (DASHBOARD COMPLETO) ---
-elif st.session_state.usuario_identificado and st.session_state.usuario_identificado['rol'] == "admin":
-    st.title("⚙️ Consola Administrativa")
-    t_res, t_reg, t_est, t_cob, t_aud = st.tabs(["📊 RESUMEN", "📝 REGISTRO", "⚖️ ESTADOS", "💰 COBROS", "🔍 AUDITORÍA"])
-
-    with t_res:
-        if st.session_state.inventario:
-            df = pd.DataFrame(st.session_state.inventario)
-            df['Fecha_Registro'] = pd.to_datetime(df['Fecha_Registro'])
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Kilos Totales", f"{df['Peso_Origen'].sum()} Kg")
-            c2.metric("Guías Activas", len(df))
-            c3.metric("Recaudación", f"${df[df['Pago']=='PAGADO']['Monto_USD'].sum()}")
-            st.bar_chart(df.groupby(df['Fecha_Registro'].dt.date).size())
-
-    with t_reg:
-        with st.form("reg_form", clear_on_submit=True):
-            f_id = st.text_input("ID Tracking")
-            f_cli = st.text_input("Cliente")
-            f_cor = st.text_input("Correo")
-            f_pes = st.number_input("Peso (Kg)", min_value=0.0)
-            if st.form_submit_button("Guardar"):
-                st.session_state.inventario.append({
-                    "ID_Barra": f_id, "Cliente": f_cli, "Correo": f_cor, "Peso_Origen": f_pes,
-                    "Monto_USD": f_pes * PRECIO_POR_KG, "Estado": "RECIBIDO ALMACEN PRINCIPAL",
-                    "Pago": "PENDIENTE", "Fecha_Registro": datetime.now()
-                })
-                guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                st.success("✅ Registrado.")
-
-    with t_est:
-        if st.session_state.inventario:
-            sel = st.selectbox("Guía:", [p["ID_Barra"] for p in st.session_state.inventario])
-            nuevo_e = st.selectbox("Estado:", ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "ENTREGADO"])
-            if st.button("Actualizar Estatus"):
-                for p in st.session_state.inventario:
-                    if p["ID_Barra"] == sel:
-                        p["Estado"] = nuevo_e
-                        guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                        st.success("✅ Actualizado.")
-                        st.rerun()
-
-    with t_cob:
-        pendientes = [p for p in st.session_state.inventario if p["Pago"] == "PENDIENTE"]
-        for idx, p in enumerate(pendientes):
-            col_a, col_b = st.columns([3, 1])
-            col_a.warning(f"{p['ID_Barra']} - ${p['Monto_USD']}")
-            if col_b.button("Cobrar", key=f"pay_{idx}"):
-                p["Pago"] = "PAGADO"
-                guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                st.rerun()
-
-    with t_aud:
-        st.subheader("Auditoría de Inventario")
-        if st.session_state.inventario:
-            df_aud = pd.DataFrame(st.session_state.inventario)
-            busqueda = st.text_input("🔍 Buscar por Código de Barra / Guía")
-            if busqueda:
-                df_aud = df_aud[df_aud['ID_Barra'].str.contains(busqueda, case=False)]
-            st.dataframe(df_aud, use_container_width=True)
-            
-            st.download_button(
-                label="📥 Descargar Inventario Completo (CSV)",
-                data=df_aud.to_csv(index=False).encode('utf-8'),
-                file_name=f"Auditoria_IACargo_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv"
-            )
+    else: st.info("No hay paquetes registrados con tu correo.")
 
 # --- 6. ACCESO ---
-elif rol_vista == "🔑 Portal Clientes":
-    st.subheader("Portal Clientes")
-    lc, lp = st.text_input("Correo"), st.text_input("Clave", type="password")
-    if st.button("Entrar"):
-        if lc == "test@test.com": # Ajustar a tu lógica de usuarios
-            st.session_state.usuario_identificado = {"correo": lc, "rol": "cliente"}
-            st.rerun()
-
-elif rol_vista == "🔐 Administración":
-    au, ap = st.text_input("Admin User"), st.text_input("Admin Pass", type="password")
-    if st.button("Acceder Admin"):
-        if au == "admin" and ap == "admin123":
-            st.session_state.usuario_identificado = {"correo": "ADMIN", "rol": "admin"}
-            st.rerun()
+else:
+    # Para pruebas rápidas: admin/admin123 o cliente con correo conocido
+    c1, c2 = st.tabs(["Iniciar Sesión", "Ayuda"])
+    with c1:
+        u = st.text_input("Correo / Usuario")
+        p = st.text_input("Contraseña", type="password")
+        if st.button("Acceder"):
+            if u == "admin" and p == "admin123":
+                st.session_state.usuario_identificado = {"correo": "ADMIN", "rol": "admin"}
+                st.rerun()
+            else:
+                # Simulación de cliente para prueba
+                st.session_state.usuario_identificado = {"correo": u.lower(), "rol": "cliente"}
+                st.rerun()
