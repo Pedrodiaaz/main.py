@@ -6,7 +6,7 @@ st.set_page_config(page_title="IACargo.io | Logística Inteligente", layout="wid
 
 # --- BARRA LATERAL (SIDEBAR) ---
 # RECUERDA: Cambia 'TU_USUARIO_GITHUB' por tu nombre real de usuario de GitHub
-url_logo = "https://raw.githubusercontent.com/Pedrodiaaz/iacargo/main/logo.png"
+url_logo = "https://raw.githubusercontent.com/Pedrodiaaz/main.py/iacargo/main/logo.png"
 
 with st.sidebar:
     try:
@@ -16,8 +16,7 @@ with st.sidebar:
     
     st.write("---")
     st.title("Menú Principal")
-    # Agregamos "Validación de Documentos" al menú
-    menu = ["🏠 Inicio", "📦 Rastreo de Carga", "📄 Validación de Documentos", "👥 Gestión de Clientes", "🚢 Inventario/Flota", "🔐 Administración"]
+    menu = ["🏠 Inicio", "📦 Rastreo de Carga", "👥 Gestión de Clientes", "🚢 Inventario/Flota", "🔐 Administración"]
     choice = st.selectbox("Navegación", menu)
     st.write("---")
     st.caption("Evolución en Logística v1.0")
@@ -43,22 +42,8 @@ elif choice == "📦 Rastreo de Carga":
     if st.button("Rastrear Mercancía"):
         if guia:
             st.success(f"Buscando información para la guía: {guia}")
-            st.info("📍 **Estado:** En tránsito | **Ubicación:** Hub Internacional")
         else:
             st.warning("Por favor, introduce un número válido.")
-
-elif choice == "📄 Validación de Documentos":
-    st.header("Centro de Validación Documental")
-    st.write("Cargue los documentos para su verificación previa (Facturas, Packing List, BL).")
-    
-    uploaded_file = st.file_uploader("Seleccione el archivo (PDF, JPG, PNG)", type=["pdf", "jpg", "png"])
-    tipo_doc = st.selectbox("Tipo de documento", ["Factura Comercial", "Packing List", "Certificado de Origen", "Otro"])
-    
-    if st.button("Enviar para Validación"):
-        if uploaded_file is not None:
-            st.success(f"El documento '{tipo_doc}' ha sido recibido. Nuestro equipo lo validará en breve.")
-        else:
-            st.error("Por favor, suba un archivo antes de enviar.")
 
 elif choice == "👥 Gestión de Clientes":
     st.header("Base de Datos de Clientes")
@@ -74,12 +59,57 @@ elif choice == "🚢 Inventario/Flota":
     st.write("Gestión de contenedores y espacios aéreos disponibles.")
 
 elif choice == "🔐 Administración":
-    st.header("Acceso de Seguridad")
-    usuario = st.text_input("Usuario")
-    clave = st.text_input("Contraseña", type="password")
-    if st.button("Acceder"):
-        if usuario == "admin" and clave == "1234":
-            st.success("Acceso concedido.")
-            st.balloons()
+    st.header("Panel de Control Administrativo")
+    
+    # Sistema de Login de Admin
+    if 'admin_auth' not in st.session_state:
+        st.session_state['admin_auth'] = False
+
+    if not st.session_state['admin_auth']:
+        usuario = st.text_input("Usuario")
+        clave = st.text_input("Contraseña", type="password")
+        if st.button("Entrar al Panel"):
+            if usuario == "admin" and clave == "1234":
+                st.session_state['admin_auth'] = True
+                st.rerun()
+            else:
+                st.error("Credenciales incorrectas.")
+    else:
+        if st.button("Cerrar Sesión Admin"):
+            st.session_state['admin_auth'] = False
+            st.rerun()
+
+        st.write("---")
+        st.subheader("⚖️ Validación de Peso y Volumen (Pre-Facturación)")
+        
+        col_p1, col_p2, col_p3 = st.columns(3)
+        with col_p1:
+            peso_cliente = st.number_input("Peso declarado por cliente (Kg)", min_value=0.0)
+        with col_p2:
+            peso_real = st.number_input("Peso real en báscula (Kg)", min_value=0.0)
+        with col_p3:
+            st.write("##")
+            if st.button("Validar Diferencia"):
+                diferencia = peso_real - peso_cliente
+                if diferencia > 0:
+                    st.error(f"Exceso detectado: +{diferencia:.2f} Kg")
+                elif diferencia < 0:
+                    st.warning(f"Menor al declarado: {diferencia:.2f} Kg")
+                else:
+                    st.success("El peso coincide perfectamente.")
+
+        st.write("---")
+        st.subheader("📏 Cálculo de Peso Volumétrico")
+        cv1, cv2, cv3 = st.columns(3)
+        largo = cv1.number_input("Largo (cm)", min_value=0.0)
+        ancho = cv2.number_input("Ancho (cm)", min_value=0.0)
+        alto = cv3.number_input("Alto (cm)", min_value=0.0)
+        
+        # Fórmula estándar para carga aérea (L*An*Al)/6000 o 5000 según la empresa
+        peso_vol = (largo * ancho * alto) / 6000
+        st.info(f"El peso volumétrico es: **{peso_vol:.2f} Kg**")
+        
+        if peso_vol > peso_real:
+            st.warning(f"Atención: Se debe cobrar por Peso Volumétrico ({peso_vol:.2f} Kg)")
         else:
-            st.error("Credenciales incorrectas.")
+            st.success(f"Se debe cobrar por Peso Real ({peso_real:.2f} Kg)")
