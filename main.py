@@ -1,199 +1,215 @@
 import streamlit as st
 import pandas as pd
 import os
+import smtplib
+import random
+import hashlib
 from datetime import datetime
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="IACargo.io | Logística Inteligente", layout="wide", page_icon="🚀")
+st.set_page_config(page_title="IACargo.io | Portal Verificado", layout="wide", page_icon="🚀")
 
-# --- 2. MOTOR DE DATOS Y PERSISTENCIA ---
-PRECIO_POR_KG = 5.0
+# Archivos de base de datos
 ARCHIVO_DB = "inventario_logistica.csv"
+ARCHIVO_USUARIOS = "usuarios_iacargo.csv"
+PRECIO_POR_KG = 5.0
 
-def cargar_datos():
-    if os.path.exists(ARCHIVO_DB):
-        try:
-            return pd.read_csv(ARCHIVO_DB).to_dict('records')
-        except:
-            return []
+# --- CONFIGURACIÓN DE CORREO (EMISOR) ---
+# IMPORTANTE: Usa una "Contraseña de Aplicación" de Google
+EMAIL_EMISOR = "tu_correo@gmail.com" 
+PASS_EMISOR = "tu_contraseña_de_aplicacion" 
+
+# --- 2. MOTOR DE FUNCIONES ---
+
+def enviar_otp_estilizado(correo_destino, codigo):
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"{codigo} es tu código de verificación - IACargo.io"
+        msg['From'] = f"IACargo.io Support <{EMAIL_EMISOR}>"
+        msg['To'] = correo_destino
+
+        # Diseño del Correo en HTML
+        html = f"""
+        <html>
+        <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.6;">
+            <div style="max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
+                <div style="background-color: #0080FF; padding: 20px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">IACargo.io</h1>
+                </div>
+                <div style="padding: 30px; text-align: center;">
+                    <h2 style="color: #2E4053;">Verifica tu cuenta</h2>
+                    <p>Gracias por unirte a nuestra plataforma logística. Utiliza el siguiente código para completar tu registro:</p>
+                    <div style="background-color: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0080FF;">{codigo}</span>
+                    </div>
+                    <p style="font-size: 14px; color: #777;">Este código expirará en breve. Si no solicitaste este registro, ignora este correo.</p>
+                </div>
+                <div style="background-color: #f9f9f9; padding: 15px; text-align: center; font-size: 12px; color: #999;">
+                    <p>“La existencia es un milagro”</p>
+                    <p>&copy; 2024 IACargo.io - Evolución en Logística</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        parte_html = MIMEText(html, 'html')
+        msg.attach(parte_html)
+
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_EMISOR, PASS_EMISOR)
+        server.sendmail(EMAIL_EMISOR, correo_destino, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"Error al enviar correo: {e}")
+        return False
+
+def hash_password(password):
+    return hashlib.sha256(str.encode(password)).hexdigest()
+
+def cargar_datos(archivo):
+    if os.path.exists(archivo):
+        return pd.read_csv(archivo).to_dict('records')
     return []
 
-def guardar_datos(datos):
-    df = pd.DataFrame(datos)
-    df.to_csv(ARCHIVO_DB, index=False)
+def guardar_datos(datos, archivo):
+    pd.DataFrame(datos).to_csv(archivo, index=False)
 
-# Inicializar inventario en la sesión
+# Inicializar estados de sesión
 if 'inventario' not in st.session_state:
-    st.session_state.inventario = cargar_datos()
+    st.session_state.inventario = cargar_datos(ARCHIVO_DB)
+if 'usuarios' not in st.session_state:
+    st.session_state.usuarios = cargar_datos(ARCHIVO_USUARIOS)
+if 'usuario_identificado' not in st.session_state:
+    st.session_state.usuario_identificado = None
+if 'otp_generado' not in st.session_state:
+    st.session_state.otp_generado = None
+if 'datos_pre_registro' not in st.session_state:
+    st.session_state.datos_pre_registro = None
 
-# --- 3. BARRA LATERAL (LOGO E IDENTIDAD) ---
+# --- 3. INTERFAZ VISUAL ---
+
 with st.sidebar:
-    # Intentamos cargar el logo localmente
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
     else:
         st.title("🚀 IACargo.io")
-    
     st.write("---")
-    st.subheader("Selección de Portal")
-    rol = st.radio("Acceder como:", ["🌐 Portal Cliente", "🔐 Administración"])
+    
+    if st.session_state.usuario_identificado:
+        st.success(f"Sesión: {st.session_state.usuario_identificado['correo']}")
+        if st.button("Cerrar Sesión"):
+            st.session_state.usuario_identificado = None
+            st.rerun()
+    else:
+        rol = st.radio("Sección:", ["🔑 Clientes", "🔐 Administración"])
+    
     st.write("---")
     st.caption("“La existencia es un milagro”")
-    st.caption("v1.2 - Evolución Continua")
 
 # ==========================================
-# INTERFAZ 1: PORTAL CLIENTE (RASTREO)
+# PORTAL CLIENTES
 # ==========================================
-if rol == "🌐 Portal Cliente":
-    st.markdown("<h1 style='color: #0080FF;'>📦 Seguimiento de Envíos</h1>", unsafe_allow_html=True)
-    st.write("Bienvenido al portal de rastreo. Ingrese su código para conocer el estatus.")
-    
-    col_bus, _ = st.columns([2, 1])
-    id_buscar = col_bus.text_input("ID de Tracking:", placeholder="Ej: IAC-101")
-    
-    if st.button("Consultar Estatus"):
-        if id_buscar:
-            paquete = next((p for p in st.session_state.inventario if str(p["ID_Barra"]).lower() == id_buscar.lower()), None)
-            if paquete:
-                st.success("✅ Paquete Localizado")
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Estado", paquete['Estado'])
-                c2.metric("Monto USD", f"${paquete['Monto_USD']:.2f}")
-                c3.metric("Pago", paquete['Pago'])
-                
-                with st.expander("Ver Detalles del Envío"):
-                    st.write(f"**Cliente:** {paquete['Cliente']}")
-                    st.write(f"**Descripción:** {paquete['Descripcion']}")
-                    st.write(f"**Fecha de Registro:** {paquete['Fecha_Registro']}")
-            else:
-                st.error("❌ El ID ingresado no existe en nuestro sistema.")
-        else:
-            st.warning("Por favor, ingrese un ID.")
+if not st.session_state.usuario_identificado and rol == "🔑 Clientes":
+    st.title("📦 Acceso de Clientes")
+    tab_log, tab_reg = st.tabs(["Iniciar Sesión", "Crear Cuenta"])
 
-# ==========================================
-# INTERFAZ 2: PANEL ADMINISTRATIVO (ADMIN)
-# ==========================================
-else:
-    st.markdown("<h1 style='color: #2E4053;'>🔐 Panel de Control Administrativo</h1>", unsafe_allow_html=True)
-    
-    # Seguridad de Acceso
-    if 'admin_auth' not in st.session_state:
-        st.session_state.admin_auth = False
-
-    if not st.session_state.admin_auth:
-        col_l, _ = st.columns([1, 2])
-        with col_l:
-            user = st.text_input("Usuario Admin")
-            pw = st.text_input("Contraseña", type="password")
-            if st.button("Ingresar al Sistema"):
-                if user == "admin" and pw == "admin123":
-                    st.session_state.admin_auth = True
-                    st.rerun()
-                else:
-                    st.error("Credenciales Incorrectas")
-    else:
-        # Botón para cerrar sesión en el sidebar
-        if st.sidebar.button("🔒 Cerrar Sesión Admin"):
-            st.session_state.admin_auth = False
-            st.rerun()
-
-        # Organización por Pestañas
-        tab_reg, tab_pes, tab_cob, tab_aud = st.tabs([
-            "📝 Registro", "⚖️ Pesaje", "💰 Cobros", "📊 Auditoría e Inventario"
-        ])
-
-        # --- TAREA: REGISTRO ---
-        with tab_reg:
-            st.subheader("Registrar Nueva Carga")
-            with st.form("registro_form"):
-                c1, c2 = st.columns(2)
-                id_p = c1.text_input("ID Único del Paquete")
-                cli = c1.text_input("Nombre del Cliente")
-                cor = c2.text_input("Correo del Cliente")
-                des = c2.text_area("Contenido / Descripción")
-                peso_o = st.number_input("Peso Inicial en Báscula (Kg)", min_value=0.0, step=0.1)
-                
-                if st.form_submit_button("Guardar Registro"):
-                    if id_p and cli:
-                        monto = peso_o * PRECIO_POR_KG
-                        nuevo = {
-                            "ID_Barra": id_p, "Cliente": cli, "Correo": cor,
-                            "Descripcion": des, "Peso_Origen": peso_o, "Peso_Almacen": 0.0,
-                            "Monto_USD": monto, "Estado": "Recogido en casa", "Pago": "PENDIENTE",
-                            "Fecha_Registro": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        }
-                        st.session_state.inventario.append(nuevo)
-                        guardar_datos(st.session_state.inventario)
-                        st.success(f"✅ Registrado con éxito. Cotización: ${monto:.2f}")
+    with tab_reg:
+        if not st.session_state.otp_generado:
+            st.subheader("Regístrate")
+            u_cor = st.text_input("Correo Electrónico")
+            u_pas = st.text_input("Contraseña", type="password")
+            if st.button("Solicitar Código de Verificación"):
+                if u_cor and u_pas:
+                    if any(u['correo'] == u_cor for u in st.session_state.usuarios):
+                        st.error("Este correo ya está registrado.")
                     else:
-                        st.error("El ID y el Cliente son campos obligatorios.")
-
-        # --- TAREA: PESAJE ---
-        with tab_pes:
-            st.subheader("Validación de Peso en Almacén")
-            pendientes_pesaje = [p["ID_Barra"] for p in st.session_state.inventario if p["Peso_Almacen"] == 0.0]
-            
-            if pendientes_pesaje:
-                id_v = st.selectbox("Seleccione ID para pesaje real:", pendientes_pesaje)
-                peso_a = st.number_input("Peso Real detectado (Kg):", min_value=0.0, step=0.1)
-                if st.button("Confirmar y Validar"):
-                    for p in st.session_state.inventario:
-                        if p["ID_Barra"] == id_v:
-                            p["Peso_Almacen"] = peso_a
-                            diff = abs(peso_a - p["Peso_Origen"])
-                            # Margen de error del 5%
-                            if diff > (p["Peso_Origen"] * 0.05):
-                                p["Estado"] = "🔴 RETENIDO: DISCREPANCIA"
-                                st.warning(f"⚠️ Alerta: Diferencia de {diff:.2f} Kg.")
-                            else:
-                                p["Estado"] = "🟢 VERIFICADO"
-                                st.success("✅ Peso validado correctamente.")
-                            guardar_datos(st.session_state.inventario)
+                        codigo = str(random.randint(100000, 999999))
+                        if enviar_otp_estilizado(u_cor, codigo):
+                            st.session_state.otp_generado = codigo
+                            st.session_state.datos_pre_registro = {"correo": u_cor, "password": hash_password(u_pas)}
+                            st.success("📩 Código enviado. Revisa tu bandeja de entrada.")
                             st.rerun()
-            else:
-                st.info("No hay paquetes pendientes por pesar.")
-
-        # --- TAREA: COBROS ---
-        with tab_cob:
-            st.subheader("Gestión de Pagos Pendientes")
-            deudores = [p for p in st.session_state.inventario if p["Pago"] == "PENDIENTE"]
-            if deudores:
-                for p in deudores:
-                    col_d1, col_d2 = st.columns([3, 1])
-                    col_d1.info(f"ID: {p['ID_Barra']} | Cliente: {p['Cliente']} | Monto: ${p['Monto_USD']:.2f}")
-                    if col_d2.button("Confirmar Pago", key=f"pago_{p['ID_Barra']}"):
-                        p["Pago"] = "PAGADO"
-                        guardar_datos(st.session_state.inventario)
-                        st.success(f"Pago procesado para {p['ID_Barra']}")
-                        st.rerun()
-            else:
-                st.success("🎉 Todos los paquetes están solventes.")
-
-        # --- TAREA: AUDITORÍA CON BUSCADOR ---
-        with tab_aud:
-            st.subheader("📊 Control Total de Inventario")
-            
-            # Buscador específico solicitado
-            col_search, _ = st.columns([1, 2])
-            filtro_id = col_search.text_input("🔍 Buscar por ID específico:", placeholder="Escriba el ID...")
-
-            if st.session_state.inventario:
-                df = pd.DataFrame(st.session_state.inventario)
-                
-                # Aplicar filtro si existe
-                if filtro_id:
-                    df_final = df[df['ID_Barra'].astype(str).str.contains(filtro_id, case=False)]
                 else:
-                    df_final = df
-                
-                st.dataframe(df_final, use_container_width=True)
-                
-                st.write("---")
-                st.download_button(
-                    label="📥 Descargar Inventario Completo",
-                    data=df.to_csv(index=False),
-                    file_name="reporte_iacargo.csv",
-                    mime="text/csv"
-                )
+                    st.error("Por favor completa los campos.")
+        else:
+            st.subheader("Verificación de Seguridad")
+            otp_input = st.text_input("Introduce el código de 6 dígitos enviado:")
+            c_b1, c_b2 = st.columns(2)
+            if c_b1.button("Verificar y Finalizar"):
+                if otp_input == st.session_state.otp_generado:
+                    nuevo_u = {"correo": st.session_state.datos_pre_registro['correo'], 
+                               "password": st.session_state.datos_pre_registro['password'], 
+                               "rol": "cliente"}
+                    st.session_state.usuarios.append(nuevo_u)
+                    guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS)
+                    st.session_state.otp_generado = None
+                    st.success("✅ ¡Cuenta verificada! Ya puedes iniciar sesión.")
+                else:
+                    st.error("Código incorrecto.")
+            if c_b2.button("Cancelar"):
+                st.session_state.otp_generado = None
+                st.rerun()
+
+    with tab_log:
+        st.subheader("Ingreso al Portal")
+        l_cor = st.text_input("Correo", key="l_cor")
+        l_pas = st.text_input("Contraseña", type="password", key="l_pas")
+        if st.button("Entrar"):
+            user = next((u for u in st.session_state.usuarios if u['correo'] == l_cor and u['password'] == hash_password(l_pas)), None)
+            if user:
+                st.session_state.usuario_identificado = user
+                st.rerun()
             else:
-                st.info("No hay registros en el inventario.")
+                st.error("Credenciales incorrectas.")
+
+# (Si el usuario es cliente, se muestra su tabla de envíos...)
+elif st.session_state.usuario_identificado and st.session_state.usuario_identificado['rol'] == "cliente":
+    st.title("📦 Mis Envíos")
+    mis_p = [p for p in st.session_state.inventario if str(p['Correo']).lower() == st.session_state.usuario_identificado['correo'].lower()]
+    if mis_p:
+        st.dataframe(pd.DataFrame(mis_p)[["ID_Barra", "Estado", "Monto_USD", "Pago"]], use_container_width=True)
+    else:
+        st.info("No tienes paquetes registrados aún.")
+
+# ==========================================
+# PANEL ADMINISTRATIVO
+# ==========================================
+elif rol == "🔐 Administración":
+    st.title("🔐 Control Administrativo")
+    if not st.session_state.usuario_identificado or st.session_state.usuario_identificado['rol'] != "admin":
+        u_adm = st.text_input("Usuario")
+        p_adm = st.text_input("Clave", type="password")
+        if st.button("Acceder"):
+            if u_adm == "admin" and p_adm == "admin123":
+                st.session_state.usuario_identificado = {"correo": "ADMIN", "rol": "admin"}
+                st.rerun()
+    else:
+        # Pestañas de Admin con el buscador en Auditoría que pediste
+        t_reg, t_pes, t_cob, t_aud = st.tabs(["📝 Registro", "⚖️ Pesaje", "💰 Cobros", "📊 Auditoría"])
+        
+        with t_reg:
+            with st.form("admin_reg"):
+                id_p = st.text_input("ID Paquete")
+                cli = st.text_input("Cliente")
+                cor = st.text_input("Correo Cliente (Vincular)")
+                peso = st.number_input("Peso (Kg)")
+                if st.form_submit_button("Registrar"):
+                    nuevo = {"ID_Barra": id_p, "Cliente": cli, "Correo": cor, "Peso_Origen": peso, 
+                             "Peso_Almacen": 0.0, "Monto_USD": peso*PRECIO_POR_KG, "Estado": "Recogido", 
+                             "Pago": "PENDIENTE", "Fecha_Registro": datetime.now().strftime("%Y-%m-%d")}
+                    st.session_state.inventario.append(nuevo)
+                    guardar_datos(st.session_state.inventario, ARCHIVO_DB)
+                    st.success("Paquete registrado y vinculado.")
+
+        with t_aud:
+            st.subheader("Buscador de Auditoría")
+            id_f = st.text_input("🔍 Filtrar por ID específico:")
+            df = pd.DataFrame(st.session_state.inventario)
+            if id_f:
+                st.dataframe(df[df['ID_Barra'].astype(str).str.contains(id_f, case=False)])
+            else:
+                st.dataframe(df)
