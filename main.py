@@ -165,6 +165,9 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
             f_cli = st.text_input("Nombre del Cliente")
             f_cor = st.text_input("Correo del Cliente")
             f_pes = st.number_input("Peso Mensajero (Kg)", min_value=0.0, step=0.1)
+            # --- CAMBIO QUIRÚRGICO: TIPO DE TRASLADO ---
+            f_tra = st.selectbox("Tipo de Traslado", ["Aéreo", "Marítimo"])
+            # ------------------------------------------
             f_mod = st.selectbox("Modalidad de Pago", ["Pago Completo", "Cobro Destino", "Pago en Cuotas"])
             if st.form_submit_button("Registrar en Sistema"):
                 if f_id and f_cli and f_cor:
@@ -172,13 +175,14 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                         "ID_Barra": f_id, "Cliente": f_cli, "Correo": f_cor.lower().strip(), 
                         "Peso_Mensajero": f_pes, "Peso_Almacen": 0.0, "Validado": False, 
                         "Monto_USD": f_pes*PRECIO_POR_KG, "Estado": "RECIBIDO ALMACEN PRINCIPAL", 
-                        "Pago": "PENDIENTE", "Modalidad": f_mod, "Abonado": 0.0, "Fecha_Registro": datetime.now()
+                        "Pago": "PENDIENTE", "Modalidad": f_mod, 
+                        "Tipo_Traslado": f_tra, # Registro del nuevo dato
+                        "Abonado": 0.0, "Fecha_Registro": datetime.now()
                     }
                     st.session_state.inventario.append(nuevo)
                     guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                    st.success(f"✅ Guía {f_id} registrada.")
+                    st.success(f"✅ Guía {f_id} registrada ({f_tra}).")
 
-    # ... [El resto de las pestañas t_val, t_cob, t_est, t_aud, t_res se mantienen igual que en tu código original funcional]
     with t_val:
         st.subheader("Báscula de Almacén")
         pendientes = [p for p in st.session_state.inventario if not p.get('Validado')]
@@ -313,13 +317,9 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
 
 # --- 6. ACCESO (LOGIN PERFECTAMENTE CENTRADO) ---
 else:
-    # Espaciado inicial para bajar un poco el contenido
     st.write("<br><br>", unsafe_allow_html=True)
-    
     col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
-    
     with col_l2:
-        # Contenedor del Logo y Lema centrado sobre la caja
         st.markdown("""
             <div style="text-align: center; margin-bottom: 20px;">
                 <div class="logo-animado" style="font-size: 70px; display: block;">IACargo.io</div>
@@ -328,8 +328,6 @@ else:
                 </p>
             </div>
         """, unsafe_allow_html=True)
-        
-        # Caja de Login
         t1, t2 = st.tabs(["Ingresar", "Registro"])
         with t1:
             le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
