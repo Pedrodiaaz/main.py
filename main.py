@@ -15,6 +15,24 @@ st.markdown("""
         color: #ffffff;
     }
 
+    /* Animación de "latido" y letra cursiva para el logo */
+    .logo-animado {
+        font-style: italic !important;
+        font-family: 'Georgia', serif;
+        background: linear-gradient(90deg, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: inline-block;
+        animation: pulse 2.5s infinite;
+        font-weight: 800;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.03); opacity: 1; }
+        100% { transform: scale(1); opacity: 0.9; }
+    }
+
     /* Contenedores Glassmorphism (Efecto cristal) */
     .stTabs, .stForm, [data-testid="stExpander"], .p-card {
         background: rgba(255, 255, 255, 0.05) !important;
@@ -31,13 +49,13 @@ st.markdown("""
         background: linear-gradient(90deg, #60a5fa, #a78bfa);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-weight: 800; font-size: 38px; margin-bottom: 20px; 
+        font-weight: 800; font-size: 38px; margin-bottom: 10px; 
     }
     
     /* Forzar visibilidad de textos */
     h1, h2, h3, p, span, label, .stMarkdown { color: #e2e8f0 !important; }
 
-    /* Badges de Estado Evolucionados */
+    /* Badges de Estado */
     .badge-paid { 
         background: linear-gradient(90deg, #059669, #10b981); 
         color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; 
@@ -75,7 +93,7 @@ st.markdown("""
         background: linear-gradient(90deg, #ef4444, #b91c1c) !important; 
     }
 
-    /* Campos de Entrada (Oscuros para contraste) */
+    /* Campos de Entrada */
     input, select, textarea {
         background-color: rgba(0, 0, 0, 0.3) !important;
         color: white !important;
@@ -117,10 +135,10 @@ if 'papelera' not in st.session_state: st.session_state.papelera = cargar_datos(
 if 'usuarios' not in st.session_state: st.session_state.usuarios = cargar_datos(ARCHIVO_USUARIOS)
 if 'usuario_identificado' not in st.session_state: st.session_state.usuario_identificado = None
 
-# --- 3. BARRA LATERAL ---
+# --- 3. BARRA LATERAL (ACTUALIZADA) ---
 with st.sidebar:
     if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
-    else: st.title("🚀 IACargo.io")
+    else: st.markdown('<h1 class="logo-animado">IACargo.io</h1>', unsafe_allow_html=True)
     st.write("---")
     if st.session_state.usuario_identificado:
         st.success(f"Socio: {st.session_state.usuario_identificado.get('nombre', 'Usuario')}")
@@ -130,7 +148,7 @@ with st.sidebar:
     else:
         rol_vista = st.radio("Navegación:", ["🔑 Portal Clientes", "🔐 Administración"])
     st.write("---")
-    st.caption("“La existencia es un milagro”")
+    st.caption("“Trabajamos para conectarte en todas partes del mundo”")
     st.caption("“No eres herramienta, eres evolución”")
 
 # --- 4. INTERFAZ DE ADMINISTRADOR ---
@@ -258,7 +276,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                 if not df_f.empty:
                     st.table(df_f[['ID_Barra', 'Cliente', 'Peso_Almacen', 'Pago', 'Monto_USD', 'Abonado']])
 
-# --- 5. PANEL DEL CLIENTE (VISUALIZACIÓN EVOLUCIONADA) ---
+# --- 5. PANEL DEL CLIENTE ---
 elif st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "cliente":
     u = st.session_state.usuario_identificado
     st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
@@ -280,7 +298,7 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                 st.markdown(f"""
                     <div class="p-card">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-weight:bold; color:#60a5fa; font-size:1.2em;">#{p['ID_Barra']}</span>
+                            <span style="font-weight:bold; color:#60a5fa; font-size:1.2em; font-style:italic;">#{p['ID_Barra']}</span>
                             <span class="{badge}">{pago_s}</span>
                         </div>
                         <div style="font-size: 0.9em; margin: 12px 0; color:#e2e8f0;">
@@ -297,12 +315,14 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 6. ACCESO (LOGIN REVISADO) ---
+# --- 6. ACCESO (LOGIN CON ANIMACIÓN Y LEMA NUEVO) ---
 else:
-    st.markdown('<div class="welcome-text" style="text-align:center;">IACargo.io</div>', unsafe_allow_html=True)
-    st.markdown('<p style="text-align:center;">“La existencia es un milagro”</p>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center; width:100%; margin-top:50px;">', unsafe_allow_html=True)
+    st.markdown('<div class="logo-animado" style="font-size:60px;">IACargo.io</div>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size:18px; font-weight: 300; letter-spacing: 1px; color:#a78bfa !important;">“Trabajamos para conectarte en todas partes del mundo”</p>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    col_l1, col_l2, col_l3 = st.columns([1,2,1])
+    col_l1, col_l2, col_l3 = st.columns([1,1.5,1])
     with col_l2:
         t1, t2 = st.tabs(["Ingresar", "Registro"])
         with t1:
