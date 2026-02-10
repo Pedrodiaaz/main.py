@@ -34,7 +34,7 @@ st.markdown("""
         100% { transform: scale(1); opacity: 0.9; }
     }
 
-    /* Contenedores Glassmorphism (Efecto cristal) */
+    /* Contenedores Glassmorphism */
     .stTabs, .stForm, [data-testid="stExpander"], .p-card {
         background: rgba(255, 255, 255, 0.05) !important;
         backdrop-filter: blur(12px);
@@ -53,29 +53,10 @@ st.markdown("""
         font-weight: 800; font-size: 38px; margin-bottom: 10px; 
     }
     
-    /* Forzar visibilidad de textos */
     h1, h2, h3, p, span, label, .stMarkdown { color: #e2e8f0 !important; }
 
-    /* Badges de Estado */
-    .badge-paid { 
-        background: linear-gradient(90deg, #059669, #10b981); 
-        color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; 
-    }
-    .badge-debt { 
-        background: linear-gradient(90deg, #dc2626, #f87171); 
-        color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; 
-    }
-
-    /* Cabeceras de Logística */
-    .state-header {
-        background: rgba(255, 255, 255, 0.1);
-        border-left: 5px solid #3b82f6;
-        color: #60a5fa !important; padding: 12px; border-radius: 8px; margin: 20px 0; font-weight: 700;
-        text-transform: uppercase; letter-spacing: 1px;
-    }
-
-    /* Botones con Estilo Moderno */
-    .stButton>button {
+    /* Botones con Estilo Moderno (Azul Evolución) */
+    .stButton>button, .stForm button {
         border-radius: 12px !important;
         background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%) !important;
         color: white !important;
@@ -84,12 +65,13 @@ st.markdown("""
         transition: all 0.3s ease !important;
         width: 100% !important;
     }
-    .stButton>button:hover {
+    .stButton>button:hover, .stForm button:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        color: white !important;
     }
 
-    /* Botón Eliminar (Rojo Profundo) */
+    /* Botón Eliminar (Rojo Profundo) - Sobrescribe el azul solo aquí */
     .btn-eliminar button { 
         background: linear-gradient(90deg, #ef4444, #b91c1c) !important; 
     }
@@ -101,7 +83,6 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
     }
 
-    /* Barra Lateral */
     [data-testid="stSidebar"] {
         background-color: #0f172a !important;
         border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -109,7 +90,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CONFIGURACIÓN DE DATOS (MANTENIDA) ---
+# --- 2. CONFIGURACIÓN DE DATOS ---
 ARCHIVO_DB = "inventario_logistica.csv"
 ARCHIVO_USUARIOS = "usuarios_iacargo.csv"
 ARCHIVO_PAPELERA = "papelera_iacargo.csv"
@@ -165,10 +146,11 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
             f_cli = st.text_input("Nombre del Cliente")
             f_cor = st.text_input("Correo del Cliente")
             f_pes = st.number_input("Peso Mensajero (Kg)", min_value=0.0, step=0.1)
-            # --- CAMBIO QUIRÚRGICO: TIPO DE TRASLADO ---
+            # Campo Tipo de Traslado
             f_tra = st.selectbox("Tipo de Traslado", ["Aéreo", "Marítimo"])
-            # ------------------------------------------
             f_mod = st.selectbox("Modalidad de Pago", ["Pago Completo", "Cobro Destino", "Pago en Cuotas"])
+            
+            # El botón de formulario ahora hereda el estilo azul/blanco de la regla general de arriba
             if st.form_submit_button("Registrar en Sistema"):
                 if f_id and f_cli and f_cor:
                     nuevo = {
@@ -176,13 +158,14 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                         "Peso_Mensajero": f_pes, "Peso_Almacen": 0.0, "Validado": False, 
                         "Monto_USD": f_pes*PRECIO_POR_KG, "Estado": "RECIBIDO ALMACEN PRINCIPAL", 
                         "Pago": "PENDIENTE", "Modalidad": f_mod, 
-                        "Tipo_Traslado": f_tra, # Registro del nuevo dato
+                        "Tipo_Traslado": f_tra,
                         "Abonado": 0.0, "Fecha_Registro": datetime.now()
                     }
                     st.session_state.inventario.append(nuevo)
                     guardar_datos(st.session_state.inventario, ARCHIVO_DB)
                     st.success(f"✅ Guía {f_id} registrada ({f_tra}).")
 
+    # [Pestañas t_val, t_cob, t_est, t_aud, t_res se mantienen exactamente iguales]
     with t_val:
         st.subheader("Báscula de Almacén")
         pendientes = [p for p in st.session_state.inventario if not p.get('Validado')]
@@ -315,7 +298,7 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 6. ACCESO (LOGIN PERFECTAMENTE CENTRADO) ---
+# --- 6. ACCESO (LOGIN) ---
 else:
     st.write("<br><br>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
