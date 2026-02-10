@@ -40,6 +40,21 @@ st.markdown("""
         margin-bottom: 15px;
         color: white !important;
     }
+    /* ESTILO PERMANENTE PARA EL BOTÓN DE REGISTRO Y OTROS */
+    .stButton>button {
+        background-color: #2563eb !important; /* Azul sólido permanente */
+        color: white !important; /* Letras blancas permanentes */
+        border-radius: 12px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        height: 3em !important;
+        width: 100% !important;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-color: #3b82f6 !important; /* Un azul un poco más claro al pasar el mouse */
+        box-shadow: 0px 4px 15px rgba(59, 130, 246, 0.4);
+    }
     .header-resumen {
         background: linear-gradient(90deg, #2563eb, #1e40af);
         color: white !important;
@@ -72,13 +87,6 @@ st.markdown("""
     h1, h2, h3, p, span, label, .stMarkdown { color: #e2e8f0 !important; }
     .badge-paid { background: linear-gradient(90deg, #059669, #10b981); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     .badge-debt { background: linear-gradient(90deg, #dc2626, #f87171); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
-    .stButton>button {
-        border-radius: 12px !important;
-        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%) !important;
-        color: white !important;
-        font-weight: 600 !important;
-        width: 100% !important;
-    }
     [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid rgba(255, 255, 255, 0.1); }
     </style>
     """, unsafe_allow_html=True)
@@ -143,13 +151,11 @@ def render_admin_dashboard():
         st.subheader("⚖️ Validación en Almacén")
         pendientes = [p for p in st.session_state.inventario if not p.get('Validado')]
         if pendientes:
-            guia_v = st.selectbox("Seleccione Guía para validar:", [p["ID_Barra"] for p in pendientes], key="val_sel_box")
+            guia_v = st.selectbox("Seleccione Guía para validar:", [p["ID_Barra"] for p in pendientes], key="val_sel")
             paq = next(p for p in pendientes if p["ID_Barra"] == guia_v)
             st.info(f"Reportado por mensajero: {paq['Peso_Mensajero']}")
             peso_real = st.number_input(f"Peso Real en Almacén", min_value=0.0, value=float(paq['Peso_Mensajero']))
             if st.button("⚖️ Confirmar y Validar"):
-                if abs(peso_real - paq['Peso_Mensajero']) > 0.5:
-                    st.warning("⚠️ Alerta: Variación de peso detectada.")
                 paq['Peso_Almacen'] = peso_real
                 paq['Validado'] = True
                 paq['Monto_USD'] = peso_real * PRECIO_POR_UNIDAD
@@ -178,7 +184,7 @@ def render_admin_dashboard():
     with t_est:
         st.subheader("✈️ Estatus de Logística")
         if st.session_state.inventario:
-            sel_e = st.selectbox("Seleccione Guía:", [p["ID_Barra"] for p in st.session_state.inventario], key="status_select")
+            sel_e = st.selectbox("Seleccione Guía:", [p["ID_Barra"] for p in st.session_state.inventario], key="stat_sel")
             n_st = st.selectbox("Nuevo Estado:", ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "ENTREGADO"])
             if st.button("Actualizar Estatus"):
                 for p in st.session_state.inventario:
@@ -238,12 +244,9 @@ def render_client_dashboard():
         c1, c2 = st.columns(2)
         for i, p in enumerate(mis_p):
             with (c1 if i % 2 == 0 else c2):
-                # DATOS FINANCIEROS CLAVE
-                tot = float(p.get('Monto_USD', 0.0))
-                abo = float(p.get('Abonado', 0.0))
+                tot = float(p.get('Monto_USD', 0.0)); abo = float(p.get('Abonado', 0.0))
                 restante = tot - abo
                 porcentaje = (abo / tot * 100) if tot > 0 else 0
-                
                 badge = "badge-paid" if p.get('Pago') == "PAGADO" else "badge-debt"
                 icon = "✈️" if p.get('Tipo_Traslado') == "Aéreo" else "🚢"
                 
@@ -263,17 +266,11 @@ def render_client_dashboard():
                                 <span>{porcentaje:.1f}%</span>
                             </div>
                 """, unsafe_allow_html=True)
-                
-                # BARRA DE PROGRESO DE STREAMLIT
                 st.progress(abo/tot if tot > 0 else 0)
-                
                 st.markdown(f"""
                             <div style="display:flex; justify-content:space-between; margin-top:8px; font-weight:bold;">
                                 <div style="color:#10b981;">Pagado: ${abo:.2f}</div>
                                 <div style="color:#f87171;">Deuda: ${restante:.2f}</div>
-                            </div>
-                            <div style="text-align:center; font-size:0.8em; color:#94a3b8; margin-top:5px;">
-                                Total del Envío: ${tot:.2f}
                             </div>
                         </div>
                     </div>
@@ -286,7 +283,7 @@ with st.sidebar:
     st.write("---")
     if st.session_state.usuario_identificado:
         st.success(f"Socio: {st.session_state.usuario_identificado['nombre']}")
-        if st.button("Cerrar Sesión"): st.session_state.usuario_identificado = None; st.rerun()
+        if st.button("Cerrar Sesión", key="logout_btn"): st.session_state.usuario_identificado = None; st.rerun()
     st.write("---")
     st.caption("“La existencia es un milagro”")
     st.caption("“Hablamos desde la igualdad”")
@@ -298,8 +295,8 @@ if st.session_state.usuario_identificado is None:
         st.markdown('<div style="text-align:center;"><div class="logo-animado" style="font-size:60px;">IACargo.io</div></div>', unsafe_allow_html=True)
         t1, t2 = st.tabs(["Ingresar", "Registrarse"])
         with t1:
-            le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
-            if st.button("Entrar", use_container_width=True):
+            le = st.text_input("Correo", key="login_email"); lp = st.text_input("Clave", type="password", key="login_pass")
+            if st.button("Entrar", use_container_width=True, key="login_sub"):
                 if le == "admin" and lp == "admin123":
                     st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
                 u = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
