@@ -296,4 +296,32 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                             <span style="color:#60a5fa; font-weight:bold;">#{p['ID_Barra']}</span>
                             <span class="{badge}">{p.get('Pago')}</span>
                         </div>
-                        <div style="font-size:0.9em; margin:10px 0
+                        <div style="font-size:0.9em; margin:10px 0;">
+                            📍 <b>Estado:</b> {p['Estado']}<br>
+                            ⚖️ <b>Medida:</b> {p['Peso_Almacen'] if p['Validado'] else p['Peso_Mensajero']:.1f} {uni}
+                        </div>
+                """, unsafe_allow_html=True)
+                st.progress(abo/tot if tot > 0 else 0)
+                st.markdown(f"Restan: **${(tot-abo):.2f}**</div>", unsafe_allow_html=True)
+
+# --- 6. LOGIN ---
+else:
+    st.write("<br><br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 1.5, 1])
+    with c2:
+        st.markdown('<div style="text-align:center;"><div class="logo-animado" style="font-size:60px;">IACargo.io</div></div>', unsafe_allow_html=True)
+        t1, t2 = st.tabs(["Ingresar", "Registrarse"])
+        with t1:
+            le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
+            if st.button("Entrar", use_container_width=True):
+                if le == "admin" and lp == "admin123":
+                    st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
+                u = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
+                if u: st.session_state.usuario_identificado = u; st.rerun()
+                else: st.error("Credenciales incorrectas")
+        with t2:
+            with st.form("signup"):
+                n = st.text_input("Nombre"); e = st.text_input("Correo"); p = st.text_input("Clave", type="password")
+                if st.form_submit_button("Crear Cuenta"):
+                    st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
+                    guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("Cuenta creada."); st.rerun()
