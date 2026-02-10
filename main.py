@@ -55,6 +55,9 @@ if 'usuario_identificado' not in st.session_state: st.session_state.usuario_iden
 
 # --- 3. BARRA LATERAL ---
 with st.sidebar:
+    # Intentamos cargar el logo de nuevo
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
     st.markdown('<h1 class="logo-animado" style="font-size: 30px;">IACargo.io</h1>', unsafe_allow_html=True)
     st.write("---")
     if st.session_state.usuario_identificado:
@@ -107,7 +110,6 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
             if st.button("⚖️ Validar Peso"):
                 paq['Peso_Almacen'] = v_real; paq['Validado'] = True; paq['Monto_USD'] = calcular_monto(v_real, tipo)
                 guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.success("✅ Validado."); st.rerun()
-        else: st.info("Sin pendientes de validación.")
 
     with t_cob:
         st.subheader("Gestión de Cobros")
@@ -186,7 +188,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                     df_f['Ref'] = df_f.apply(lambda x: f"{'✈️' if x.get('Tipo_Traslado') == 'Aéreo' else '🚢'} {x['ID_Barra']}", axis=1)
                     st.table(df_f[['Ref', 'Cliente', 'Peso_Almacen', 'Pago', 'Abonado', 'Deuda']])
 
-# --- 5. PANEL DEL CLIENTE ---
+# --- 5. PANEL DEL CLIENTE (CON BARRA DE PROGRESO RESTAURADA) ---
 elif st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "cliente":
     u = st.session_state.usuario_identificado
     st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
@@ -197,21 +199,32 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
         c_p1, c_p2 = st.columns(2)
         for i, p in enumerate(mis_p):
             with (c_p1 if i % 2 == 0 else c_p2):
-                icon = "✈️" if p.get('Tipo_Traslado') == "Aéreo" else "🚢"
+                total = p['Monto_USD']
+                abonado = p.get('Abonado', 0.0)
                 pago_s = p.get('Pago', 'PENDIENTE')
+                icon = "✈️" if p.get('Tipo_Traslado') == "Aéreo" else "🚢"
                 badge = "badge-paid" if pago_s == "PAGADO" else "badge-debt"
+                
                 st.markdown(f"""
                     <div class="p-card">
                         <div style="display: flex; justify-content: space-between;">
                             <span style="font-weight:bold; color:#60a5fa;">{icon} #{p['ID_Barra']}</span>
                             <span class="{badge}">{pago_s}</span>
                         </div>
-                        <div style="font-size: 0.9em; margin-top: 10px;">
+                        <div style="font-size: 0.9em; margin-top: 10px; margin-bottom: 10px;">
                             📍 Estado: {p['Estado']}<br>
-                            Deuda: <b>${(p['Monto_USD']-p['Abonado']):.2f}</b>
+                            💳 Modalidad: {p.get('Modalidad', 'N/A')}<br>
+                            Deuda: <b>${(total-abonado):.2f}</b>
                         </div>
-                    </div>
                 """, unsafe_allow_html=True)
+                
+                # REINCORPORACIÓN: Línea de avance para pagos en cuotas
+                if total > 0:
+                    progreso = min(abonado / total, 1.0)
+                    st.progress(progreso)
+                    st.caption(f"Progreso del pago: {progreso*100:.1f}%")
+                
+                st.markdown("</div>", unsafe_allow_html=True)
 
 # --- 6. ACCESO (LOGIN) ---
 else:
@@ -230,4 +243,8 @@ else:
                 else: st.error("Credenciales incorrectas")
         with t2:
             with st.form("signup"):
-                n = st
+                n = st.text_input("Nombre Completo"); e = st.text_input("Correo Electrónico"); p = st.text_input("Contraseña", type="password")
+                if st.form_submit_button("Crear Cuenta"):
+                    if n and e and p:
+                        st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
+                        guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("¡Registro exitoso! Ya puedes ingresar."); st.rerun()
