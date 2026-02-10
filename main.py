@@ -41,8 +41,7 @@ st.markdown("""
         color: white !important;
     }
 
-    /* CAMBIO QUIRÚRGICO: BOTONES DE LOGIN Y REGISTRO ESTÁTICOS */
-    /* Seleccionamos específicamente el botón del login y el de registro en admin */
+    /* BOTONES AZULES ESTÁTICOS */
     div[data-testid="stForm"] button {
         background-color: #2563eb !important;
         color: white !important;
@@ -53,16 +52,10 @@ st.markdown("""
         transition: none !important;
         box-shadow: none !important;
     }
-    div[data-testid="stForm"] button:hover, 
-    div[data-testid="stForm"] button:active {
+    div[data-testid="stForm"] button:hover {
         background-color: #2563eb !important;
-        color: white !important;
         transform: none !important;
-        box-shadow: none !important;
     }
-
-    /* Otros botones (Cerrar sesión, etc) mantienen estilo estándar pero legible */
-    .stButton>button { border-radius: 12px; }
 
     .header-resumen {
         background: linear-gradient(90deg, #2563eb, #1e40af);
@@ -87,6 +80,16 @@ st.markdown("""
     .resumen-id { font-weight: 800; color: #2563eb; width: 150px; }
     .resumen-cliente { flex-grow: 1; font-weight: 500; font-size: 1.1em; }
     .resumen-data { font-weight: 700; color: #475569; text-align: right; }
+    
+    /* Estilo para los indicadores superiores */
+    .metric-container {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 15px;
+        border-radius: 15px;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
     .welcome-text { 
         background: linear-gradient(90deg, #60a5fa, #a78bfa);
         -webkit-background-clip: text;
@@ -135,6 +138,7 @@ def render_admin_dashboard():
     tabs = st.tabs(["📝 REGISTRO", "⚖️ VALIDACIÓN", "💰 COBROS", "✈️ ESTADOS", "🔍 AUDITORÍA/EDICIÓN", "📊 RESUMEN"])
     t_reg, t_val, t_cob, t_est, t_aud, t_res = tabs
 
+    # REGISTRO
     with t_reg:
         st.subheader("Registro de Entrada")
         f_tra = st.selectbox("Tipo de Traslado", ["Aéreo", "Marítimo"], key="admin_reg_tra")
@@ -154,6 +158,7 @@ def render_admin_dashboard():
                     st.session_state.id_actual = generar_id_unico()
                     st.success(f"Guía {f_id} registrada."); st.rerun()
 
+    # VALIDACION
     with t_val:
         st.subheader("⚖️ Validación en Almacén")
         pendientes = [p for p in st.session_state.inventario if not p.get('Validado')]
@@ -169,10 +174,10 @@ def render_admin_dashboard():
                 guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.success("Validado correctamente."); st.rerun()
         else: st.info("No hay paquetes por validar.")
 
+    # COBROS
     with t_cob:
         st.subheader("💰 Gestión de Cobros")
         pendientes_p = [p for p in st.session_state.inventario if p['Pago'] == 'PENDIENTE']
-        if not pendientes_p: st.success("Todo cobrado.")
         for p in pendientes_p:
             total = float(p.get('Monto_USD', 0.0)); abo = float(p.get('Abonado', 0.0)); rest = total - abo
             with st.expander(f"💵 {p['ID_Barra']} - {p['Cliente']} (Faltan: ${rest:.2f})"):
@@ -182,6 +187,7 @@ def render_admin_dashboard():
                     if (total - p['Abonado']) <= 0.01: p['Pago'] = 'PAGADO'
                     guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.rerun()
 
+    # ESTADOS
     with t_est:
         st.subheader("✈️ Estatus de Logística")
         if st.session_state.inventario:
@@ -192,6 +198,7 @@ def render_admin_dashboard():
                     if p["ID_Barra"] == sel_e: p["Estado"] = n_st
                 guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.rerun()
 
+    # AUDITORIA
     with t_aud:
         st.subheader("🔍 Auditoría y Edición")
         if st.checkbox("🗑️ Ver Papelera"):
@@ -219,13 +226,29 @@ def render_admin_dashboard():
                         paq_ed.update({'Cliente': n_cli, 'Peso_Almacen': n_pes, 'Tipo_Traslado': n_tra, 'Monto_USD': n_pes * PRECIO_POR_UNIDAD})
                         guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.rerun()
 
+    # RESUMEN (CON MEJORA DE CONTEO SUPERIOR)
     with t_res:
-        st.subheader("📊 Resumen por Estatus")
+        st.subheader("📊 Resumen General de Carga")
+        
+        # --- NUEVA SECCIÓN DE MÉTRICAS QUIRÚRGICA ---
+        df_full = pd.DataFrame(st.session_state.inventario)
+        c_alm = len(df_full[df_full['Estado'] == "RECIBIDO ALMACEN PRINCIPAL"]) if not df_full.empty else 0
+        c_tra = len(df_full[df_full['Estado'] == "EN TRANSITO"]) if not df_full.empty else 0
+        c_ent = len(df_full[df_full['Estado'] == "ENTREGADO"]) if not df_full.empty else 0
+        
+        m1, m2, m3 = st.columns(3)
+        m1.markdown(f'<div class="metric-container"><small>📦 EN ALMACÉN</small><br><b style="font-size:25px;">{c_alm}</b></div>', unsafe_allow_html=True)
+        m2.markdown(f'<div class="metric-container"><small>✈️ EN TRÁNSITO</small><br><b style="font-size:25px;">{c_tra}</b></div>', unsafe_allow_html=True)
+        m3.markdown(f'<div class="metric-container"><small>✅ ENTREGADO</small><br><b style="font-size:25px;">{c_ent}</b></div>', unsafe_allow_html=True)
+        st.write("---")
+        # --------------------------------------------
+
         busq_res = st.text_input("🔍 Buscar caja por código:", key="res_search_admin")
         df_res = pd.DataFrame(st.session_state.inventario)
         if busq_res: df_res = df_res[df_res['ID_Barra'].astype(str).str.contains(busq_res, case=False)]
+        
         for est_k, est_l in [("RECIBIDO ALMACEN PRINCIPAL", "📦 EN ALMACÉN"), ("EN TRANSITO", "✈️ EN TRÁNSITO"), ("ENTREGADO", "✅ ENTREGADO")]:
-            df_f = df_res[df_res['Estado'] == est_k]
+            df_f = df_res[df_res['Estado'] == est_k] if not df_res.empty else pd.DataFrame()
             st.markdown(f'<div class="header-resumen">{est_l} ({len(df_f)})</div>', unsafe_allow_html=True)
             for _, r in df_f.iterrows():
                 icon = "✈️" if r.get('Tipo_Traslado') == "Aéreo" else "🚢"
@@ -268,7 +291,7 @@ def render_client_dashboard():
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 5. LOG LOGIN ---
+# --- 5. LÓGICA DE LOGIN ---
 with st.sidebar:
     if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
     else: st.markdown('<h1 class="logo-animado" style="font-size: 30px;">IACargo.io</h1>', unsafe_allow_html=True)
