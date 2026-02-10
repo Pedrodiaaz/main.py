@@ -4,29 +4,93 @@ import os
 import hashlib
 from datetime import datetime
 
-# --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
+# --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL EVOLUCIONADA ---
 st.set_page_config(page_title="IACargo.io | Evolution System", layout="wide", page_icon="🚀")
 
 st.markdown("""
     <style>
-    .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
-    .p-card {
-        background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.3); padding: 15px; border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 12px;
+    /* Fondo General Tecnológico */
+    .stApp {
+        background: radial-gradient(circle at top left, #1e3a8a 0%, #0f172a 100%);
+        color: #ffffff;
     }
-    .welcome-text { color: #1e3a8a; font-weight: 900; font-size: 32px; margin-bottom: 10px; }
-    .badge-paid { background-color: #d4edda; color: #155724; padding: 4px 10px; border-radius: 10px; font-weight: bold; font-size: 11px; }
-    .badge-debt { background-color: #f8d7da; color: #721c24; padding: 4px 10px; border-radius: 10px; font-weight: bold; font-size: 11px; }
+
+    /* Contenedores Glassmorphism (Efecto cristal) */
+    .stTabs, .stForm, [data-testid="stExpander"], .p-card {
+        background: rgba(255, 255, 255, 0.05) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px !important;
+        padding: 20px;
+        margin-bottom: 15px;
+        color: white !important;
+    }
+
+    /* Títulos con Degradado */
+    .welcome-text { 
+        background: linear-gradient(90deg, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800; font-size: 38px; margin-bottom: 20px; 
+    }
+    
+    /* Forzar visibilidad de textos */
+    h1, h2, h3, p, span, label, .stMarkdown { color: #e2e8f0 !important; }
+
+    /* Badges de Estado Evolucionados */
+    .badge-paid { 
+        background: linear-gradient(90deg, #059669, #10b981); 
+        color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; 
+    }
+    .badge-debt { 
+        background: linear-gradient(90deg, #dc2626, #f87171); 
+        color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; 
+    }
+
+    /* Cabeceras de Logística */
     .state-header {
-        background: linear-gradient(90deg, #1e3a8a 0%, #0080ff 100%);
-        color: white; padding: 10px 18px; border-radius: 10px; margin: 15px 0; font-weight: 700;
+        background: rgba(255, 255, 255, 0.1);
+        border-left: 5px solid #3b82f6;
+        color: #60a5fa !important; padding: 12px; border-radius: 8px; margin: 20px 0; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 1px;
     }
-    .btn-eliminar button { background-color: #ff4b4b !important; color: white !important; }
+
+    /* Botones con Estilo Moderno */
+    .stButton>button {
+        border-radius: 12px !important;
+        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: white !important;
+        border: none !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+    }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+
+    /* Botón Eliminar (Rojo Profundo) */
+    .btn-eliminar button { 
+        background: linear-gradient(90deg, #ef4444, #b91c1c) !important; 
+    }
+
+    /* Campos de Entrada (Oscuros para contraste) */
+    input, select, textarea {
+        background-color: rgba(0, 0, 0, 0.3) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    /* Barra Lateral */
+    [data-testid="stSidebar"] {
+        background-color: #0f172a !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CONFIGURACIÓN DE DATOS ---
+# --- 2. CONFIGURACIÓN DE DATOS (MANTENIDA) ---
 ARCHIVO_DB = "inventario_logistica.csv"
 ARCHIVO_USUARIOS = "usuarios_iacargo.csv"
 ARCHIVO_PAPELERA = "papelera_iacargo.csv"
@@ -136,7 +200,6 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                     if p["ID_Barra"] == sel_e: p["Estado"] = n_st
                 guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.rerun()
 
-    # E. AUDITORÍA / PAPELERA (RESTAURADO COMPLETO)
     with t_aud:
         col_a1, col_a2 = st.columns([3, 1])
         with col_a1: st.subheader("Auditoría y Edición")
@@ -180,7 +243,6 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                         guardar_datos(st.session_state.inventario, ARCHIVO_DB); guardar_datos(st.session_state.papelera, ARCHIVO_PAPELERA); st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
 
-    # F. RESUMEN (CORREGIDO AL FORMATO ORIGINAL)
     with t_res:
         st.subheader("Resumen General de Operaciones")
         if st.session_state.inventario:
@@ -196,7 +258,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                 if not df_f.empty:
                     st.table(df_f[['ID_Barra', 'Cliente', 'Peso_Almacen', 'Pago', 'Monto_USD', 'Abonado']])
 
-# --- 5. PANEL DEL CLIENTE (VISTA COMPACTA Y DISTINGUIBLE) ---
+# --- 5. PANEL DEL CLIENTE (VISUALIZACIÓN EVOLUCIONADA) ---
 elif st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "cliente":
     u = st.session_state.usuario_identificado
     st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
@@ -207,7 +269,6 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
         st.info("No hay paquetes asociados.")
     else:
         st.subheader("📋 Mis Envíos")
-        # Usamos columnas para que las tarjetas no ocupen tanto espacio vertical
         col_paq1, col_paq2 = st.columns(2)
         for i, p in enumerate(mis_p):
             with (col_paq1 if i % 2 == 0 else col_paq2):
@@ -219,37 +280,42 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                 st.markdown(f"""
                     <div class="p-card">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-weight:bold; color:#1e3a8a;">#{p['ID_Barra']}</span>
+                            <span style="font-weight:bold; color:#60a5fa; font-size:1.2em;">#{p['ID_Barra']}</span>
                             <span class="{badge}">{pago_s}</span>
                         </div>
-                        <div style="font-size: 0.85em; margin: 8px 0;">
-                            📍 <b>{p['Estado']}</b><br>
-                            ⚖️ {p['Peso_Almacen'] if p['Validado'] else p['Peso_Mensajero']:.1f} Kg | 💳 {p.get('Modalidad')}
+                        <div style="font-size: 0.9em; margin: 12px 0; color:#e2e8f0;">
+                            📍 <b>Estado:</b> {p['Estado']}<br>
+                            ⚖️ <b>Peso:</b> {p['Peso_Almacen'] if p['Validado'] else p['Peso_Mensajero']:.1f} Kg | 💳 {p.get('Modalidad')}
                         </div>
                 """, unsafe_allow_html=True)
-                # Barra de progreso compacta
                 st.progress(abonado/total if total > 0 else 0)
                 st.markdown(f"""
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-top: 5px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-top: 8px;">
                             <span>Abonado: <b>${abonado:.2f}</b></span>
-                            <span style="color:red;">Resta: <b>${(total-abonado):.2f}</b></span>
+                            <span style="color:#f87171;">Resta: <b>${(total-abonado):.2f}</b></span>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 6. ACCESO ---
+# --- 6. ACCESO (LOGIN REVISADO) ---
 else:
-    t1, t2 = st.tabs(["Ingresar", "Registro"])
-    with t1:
-        le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
-        if st.button("Iniciar Sesión", use_container_width=True):
-            if le == "admin" and lp == "admin123":
-                st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
-            u = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
-            if u: st.session_state.usuario_identificado = u; st.rerun()
-    with t2:
-        with st.form("signup"):
-            n = st.text_input("Nombre"); e = st.text_input("Correo"); p = st.text_input("Clave", type="password")
-            if st.form_submit_button("Crear Cuenta"):
-                st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
-                guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("Registrado.")
+    st.markdown('<div class="welcome-text" style="text-align:center;">IACargo.io</div>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align:center;">“La existencia es un milagro”</p>', unsafe_allow_html=True)
+    
+    col_l1, col_l2, col_l3 = st.columns([1,2,1])
+    with col_l2:
+        t1, t2 = st.tabs(["Ingresar", "Registro"])
+        with t1:
+            le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
+            if st.button("Iniciar Sesión", use_container_width=True):
+                if le == "admin" and lp == "admin123":
+                    st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
+                u = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
+                if u: st.session_state.usuario_identificado = u; st.rerun()
+                else: st.error("Credenciales incorrectas")
+        with t2:
+            with st.form("signup"):
+                n = st.text_input("Nombre"); e = st.text_input("Correo"); p = st.text_input("Clave", type="password")
+                if st.form_submit_button("Crear Cuenta"):
+                    st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
+                    guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("Registrado.")
