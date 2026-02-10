@@ -31,6 +31,27 @@ st.markdown("""
         50% { transform: scale(1.03); opacity: 1; }
         100% { transform: scale(1); opacity: 0.9; }
     }
+    
+    /* ESTANDARIZACIÓN GLOBAL DE BOTONES (DISEÑO AZUL SÓLIDO) */
+    button, .stButton>button, div[data-testid="stForm"] button {
+        background-color: #2563eb !important;
+        color: white !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        border: none !important;
+        padding: 10px 24px !important;
+        width: 100% !important; /* Para que sean fáciles de presionar */
+        transition: none !important;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2) !important;
+        display: block !important;
+    }
+    button:hover, .stButton>button:hover {
+        background-color: #1d4ed8 !important; /* Un azul ligeramente más oscuro al pasar el mouse */
+        border: none !important;
+        color: white !important;
+    }
+
     .stTabs, .stForm, [data-testid="stExpander"], .p-card {
         background: rgba(255, 255, 255, 0.05) !important;
         backdrop-filter: blur(12px);
@@ -38,23 +59,6 @@ st.markdown("""
         border-radius: 20px !important;
         padding: 20px;
         margin-bottom: 15px;
-        color: white !important;
-    }
-
-    /* BOTONES AZULES ESTÁTICOS (Login y Registro Admin) */
-    div[data-testid="stForm"] button {
-        background-color: #2563eb !important;
-        color: white !important;
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-        text-transform: uppercase !important;
-        border: none !important;
-        transition: none !important;
-        box-shadow: none !important;
-    }
-    div[data-testid="stForm"] button:hover {
-        background-color: #2563eb !important;
-        transform: none !important;
     }
 
     .metric-container {
@@ -84,8 +88,8 @@ st.markdown("""
         font-weight: 800; font-size: 38px; margin-bottom: 10px; 
     }
     
-    .badge-paid { background: linear-gradient(90deg, #059669, #10b981); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
-    .badge-debt { background: linear-gradient(90deg, #dc2626, #f87171); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+    .badge-paid { background: #059669; color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+    .badge-debt { background: #dc2626; color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     
     h1, h2, h3, p, span, label, .stMarkdown { color: #e2e8f0 !important; }
     [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid rgba(255, 255, 255, 0.1); }
@@ -209,6 +213,10 @@ def render_admin_dashboard():
                 if st.button("💾 Guardar Cambios"):
                     paq_ed.update({'Cliente': n_cli, 'Peso_Almacen': n_pes, 'Tipo_Traslado': n_tra, 'Monto_USD': n_pes * PRECIO_POR_UNIDAD})
                     guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.rerun()
+                if st.button("🗑️ Enviar a Papelera"):
+                    st.session_state.papelera.append(paq_ed)
+                    st.session_state.inventario = [p for p in st.session_state.inventario if p["ID_Barra"] != guia_ed]
+                    guardar_datos(st.session_state.inventario, ARCHIVO_DB); guardar_datos(st.session_state.papelera, ARCHIVO_PAPELERA); st.rerun()
 
     with t_res:
         st.subheader("📊 Resumen General de Carga")
@@ -232,65 +240,33 @@ def render_admin_dashboard():
                     icon_t = "✈️" if r.get('Tipo_Traslado') == "Aéreo" else "🚢"
                     st.markdown(f'<div class="resumen-row"><div style="color:#2563eb; font-weight:800;">{icon_t} {r["ID_Barra"]}</div><div style="color:#1e293b; flex-grow:1; margin-left:15px;">{r["Cliente"]}</div><div style="color:#475569; font-weight:700;">${float(r["Abonado"]):.2f}</div></div>', unsafe_allow_html=True)
 
-# --- 4. INTERFAZ CLIENTE (RESTAURADA) ---
+# --- 4. INTERFAZ CLIENTE ---
 def render_client_dashboard():
     u = st.session_state.usuario_identificado
     st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
-    
-    # Buscador para el cliente
-    busq_cli = st.text_input("🔍 Buscar mis paquetes por código de barra:", key="cli_search_input")
-    
-    # Filtrar solo paquetes del correo del usuario logueado
+    busq_cli = st.text_input("🔍 Buscar mis paquetes por código:", key="cli_search_input")
     mis_p = [p for p in st.session_state.inventario if str(p.get('Correo', '')).lower() == str(u.get('correo', '')).lower()]
-    
-    if busq_cli:
-        mis_p = [p for p in mis_p if busq_cli.lower() in str(p.get('ID_Barra')).lower()]
+    if busq_cli: mis_p = [p for p in mis_p if busq_cli.lower() in str(p.get('ID_Barra')).lower()]
 
-    if not mis_p:
-        st.info("Actualmente no tienes envíos registrados en el sistema.")
+    if not mis_p: st.info("No tienes envíos registrados.")
     else:
-        st.write(f"Has registrado **{len(mis_p)}** paquete(s):")
         c1, c2 = st.columns(2)
         for i, p in enumerate(mis_p):
             with (c1 if i % 2 == 0 else c2):
-                tot = float(p.get('Monto_USD', 0.0))
-                abo = float(p.get('Abonado', 0.0))
-                rest = tot - abo
+                tot = float(p.get('Monto_USD', 0.0)); abo = float(p.get('Abonado', 0.0)); rest = tot - abo
                 porc = (abo / tot * 100) if tot > 0 else 0
-                
                 badge_class = "badge-paid" if p.get('Pago') == "PAGADO" else "badge-debt"
                 icon = "✈️" if p.get('Tipo_Traslado') == "Aéreo" else "🚢"
-                
-                st.markdown(f"""
-                    <div class="p-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                            <span style="color:#60a5fa; font-weight:800; font-size:1.3em;">{icon} #{p['ID_Barra']}</span>
-                            <span class="{badge_class}">{p.get('Pago')}</span>
-                        </div>
-                        <div style="font-size:1em; margin-bottom:15px;">
-                            📍 <b>Estado actual:</b> {p['Estado']}<br>
-                            💳 <b>Modalidad:</b> {p.get('Modalidad', 'N/A')}
-                        </div>
-                        <div style="background: rgba(255,255,255,0.08); border-radius:12px; padding:15px;">
-                            <div style="display:flex; justify-content:space-between; font-size:0.9em; margin-bottom:8px;">
-                                <span>Progreso de Pago</span>
-                                <b>{porc:.1f}%</b>
-                            </div>
-                """, unsafe_allow_html=True)
-                
-                # Renderizar la barra de progreso nativa de Streamlit
+                st.markdown(f'<div class="p-card"><div style="display:flex; justify-content:space-between; align-items:center;">'
+                            f'<span style="color:#60a5fa; font-weight:800; font-size:1.3em;">{icon} #{p["ID_Barra"]}</span>'
+                            f'<span class="{badge_class}">{p.get("Pago")}</span></div>'
+                            f'<div style="margin:15px 0;">📍 <b>Estado:</b> {p["Estado"]}</div>', unsafe_allow_html=True)
                 st.progress(abo/tot if tot > 0 else 0)
-                
-                st.markdown(f"""
-                            <div style="display:flex; justify-content:space-between; margin-top:10px; font-weight:bold; font-size:0.95em;">
-                                <div style="color:#10b981;">Pagado: ${abo:.2f}</div>
-                                <div style="color:#f87171;">Pendiente: ${rest:.2f}</div>
-                            </div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f'<div style="display:flex; justify-content:space-between; margin-top:10px; font-weight:bold;">'
+                            f'<div style="color:#10b981;">Pagado: ${abo:.2f}</div>'
+                            f'<div style="color:#f87171;">Falta: ${rest:.2f}</div></div></div>', unsafe_allow_html=True)
 
-# --- 5. LÓGICA DE LOGIN ---
+# --- 5. LOGIN ---
 with st.sidebar:
     if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
     else: st.markdown('<h1 class="logo-animado" style="font-size: 30px;">IACargo.io</h1>', unsafe_allow_html=True)
@@ -298,9 +274,7 @@ with st.sidebar:
     if st.session_state.usuario_identificado:
         st.success(f"Socio: {st.session_state.usuario_identificado['nombre']}")
         if st.button("Cerrar Sesión"): st.session_state.usuario_identificado = None; st.rerun()
-    st.write("---")
-    st.caption("“La existencia es un milagro”")
-    st.caption("“No eres herramienta, eres evolución”")
+    st.caption("“La existencia es un milagro” | “No eres herramienta, eres evolución”")
 
 if st.session_state.usuario_identificado is None:
     c1, c2, c3 = st.columns([1, 1.5, 1])
@@ -310,18 +284,18 @@ if st.session_state.usuario_identificado is None:
         with t1:
             with st.form("login_form"):
                 le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
-                if st.form_submit_button("Entrar", use_container_width=True):
+                if st.form_submit_button("Entrar"):
                     if le == "admin" and lp == "admin123":
                         st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
                     u = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
                     if u: st.session_state.usuario_identificado = u; st.rerun()
-                    else: st.error("Credenciales incorrectas")
+                    else: st.error("Error")
         with t2:
             with st.form("signup_form"):
                 n = st.text_input("Nombre"); e = st.text_input("Correo"); p = st.text_input("Clave", type="password")
                 if st.form_submit_button("Crear Cuenta"):
                     st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
-                    guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("Cuenta creada."); st.rerun()
+                    guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("Creada."); st.rerun()
 else:
     if st.session_state.usuario_identificado.get('rol') == "admin": render_admin_dashboard()
     else: render_client_dashboard()
