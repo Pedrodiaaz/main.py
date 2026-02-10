@@ -4,7 +4,7 @@ import os
 import hashlib
 from datetime import datetime
 
-# --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
+# --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL EVOLUCIONADA ---
 st.set_page_config(page_title="IACargo.io | Evolution System", layout="wide", page_icon="🚀")
 
 st.markdown("""
@@ -39,6 +39,7 @@ st.markdown("""
         color: white !important;
     }
 
+    /* ESTILO PARA LOS ENCABEZADOS DE ESTADO EN RESUMEN */
     .header-resumen {
         background: linear-gradient(90deg, #2563eb, #1e40af);
         color: white !important;
@@ -66,22 +67,25 @@ st.markdown("""
     .resumen-cliente { flex-grow: 1; font-weight: 500; font-size: 1.1em; }
     .resumen-data { font-weight: 700; color: #475569; text-align: right; }
     
-    /* BOTÓN DE REGISTRO ESTÁTICO (SIN CAMBIO AL HOVER) */
-    div.stButton > button:first-child, div.stButton > button:first-child:hover, div.stButton > button:first-child:active {
-        background-color: #2563eb !important;
-        background-image: none !important;
-        color: white !important;
-        border: 1px solid #60a5fa !important;
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-        padding: 10px 24px !important;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        transition: none !important; /* Elimina animaciones */
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
+    .welcome-text { 
+        background: linear-gradient(90deg, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800; font-size: 38px; margin-bottom: 10px; 
     }
-    
-    .btn-eliminar button, .btn-eliminar button:hover { background-color: #ef4444 !important; border: none !important; }
+    h1, h2, h3, p, span, label, .stMarkdown { color: #e2e8f0 !important; }
+    .badge-paid { background: linear-gradient(90deg, #059669, #10b981); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+    .badge-debt { background: linear-gradient(90deg, #dc2626, #f87171); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+    .stButton>button {
+        border-radius: 12px !important;
+        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: white !important;
+        border: none !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+    }
+    .btn-eliminar button { background: linear-gradient(90deg, #ef4444, #b91c1c) !important; }
     [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid rgba(255, 255, 255, 0.1); }
     </style>
     """, unsafe_allow_html=True)
@@ -117,9 +121,9 @@ with st.sidebar:
     st.write("---")
     if st.session_state.usuario_identificado:
         st.success(f"Socio: {st.session_state.usuario_identificado.get('nombre', 'Usuario')}")
-        if st.button("Cerrar Sesión", key="logout_btn", use_container_width=True):
+        if st.button("Cerrar Sesión", use_container_width=True):
             st.session_state.usuario_identificado = None; st.rerun()
-    else: st.caption("Inicie sesión para continuar")
+    else: rol_vista = st.radio("Navegación:", ["🔑 Portal Clientes", "🔐 Administración"])
     st.write("---")
     st.caption("“La existencia es un milagro”")
     st.caption("“No eres herramienta, eres evolución”")
@@ -229,6 +233,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
             busq_res = st.text_input("🔍 Buscar caja por código:", key="res_search")
             if busq_res: df_res = df_res[df_res['ID_Barra'].astype(str).str.contains(busq_res, case=False)]
             
+            # --- CÁLCULO DE CANTIDADES POR ESTADO ---
             cant_almacen = len(df_res[df_res['Estado'] == "RECIBIDO ALMACEN PRINCIPAL"])
             cant_transito = len(df_res[df_res['Estado'] == "EN TRANSITO"])
             cant_entregados = len(df_res[df_res['Estado'] == "ENTREGADO"])
@@ -240,6 +245,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
             
             st.write("---")
             
+            # --- SECCIONES POR ESTADO CON CABECERA AZUL ---
             estados_mapeo = {
                 "RECIBIDO ALMACEN PRINCIPAL": "📦 Mercancía en Almacén",
                 "EN TRANSITO": "✈️ Mercancía en Tránsito",
@@ -265,7 +271,38 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                 else:
                     st.caption("No hay registros en este estado.")
 
-# --- 5. ACCESO (LOGIN) ---
+# --- 5. PANEL DEL CLIENTE ---
+elif st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "cliente":
+    u = st.session_state.usuario_identificado
+    st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
+    u_mail = str(u.get('correo', '')).lower()
+    mis_p = [p for p in st.session_state.inventario if str(p.get('Correo', '')).lower() == u_mail]
+    if not mis_p: st.info("No hay paquetes asociados.")
+    else:
+        st.subheader("📋 Mis Envíos")
+        col_paq1, col_paq2 = st.columns(2)
+        for i, p in enumerate(mis_p):
+            with (col_paq1 if i % 2 == 0 else col_paq2):
+                total = p['Monto_USD']; abonado = p.get('Abonado', 0.0); pago_s = p.get('Pago', 'PENDIENTE')
+                badge = "badge-paid" if pago_s == "PAGADO" else "badge-debt"
+                icon = "✈️" if p.get('Tipo_Traslado') == "Aéreo" else "🚢"
+                st.markdown(f"""
+                    <div class="p-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight:bold; color:#60a5fa; font-size:1.2em; font-style:italic;">{icon} #{p['ID_Barra']}</span>
+                            <span class="{badge}">{pago_s}</span>
+                        </div>
+                        <div style="font-size: 0.9em; margin: 12px 0; color:#e2e8f0;">
+                            📍 <b>Estado:</b> {p['Estado']}<br>
+                            ⚖️ <b>Peso:</b> {p['Peso_Almacen'] if p['Validado'] else p['Peso_Mensajero']:.1f} Kg | 💳 {p.get('Modalidad')}
+                        </div>
+                """, unsafe_allow_html=True)
+                st.progress(abonado/total if total > 0 else 0)
+                st.markdown(f"""<div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-top: 8px;">
+                            <span>Abonado: <b>${abonado:.2f}</b></span><span style="color:#f87171;">Resta: <b>${(total-abonado):.2f}</b></span>
+                        </div></div>""", unsafe_allow_html=True)
+
+# --- 6. ACCESO (LOGIN) ---
 else:
     st.write("<br><br>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
@@ -279,7 +316,7 @@ else:
                     st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
                 u = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
                 if u: st.session_state.usuario_identificado = u; st.rerun()
-                else: st.error("Acceso denegado")
+                else: st.error("Error")
         with t2:
             with st.form("signup"):
                 n = st.text_input("Nombre"); e = st.text_input("Correo"); p = st.text_input("Clave", type="password")
