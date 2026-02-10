@@ -9,16 +9,13 @@ st.set_page_config(page_title="IACargo.io | Evolution System", layout="wide", pa
 
 st.markdown("""
     <style>
-    /* Importar fuente cursiva profesional */
     @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap');
 
-    /* Fondo General Tecnológico */
     .stApp {
         background: radial-gradient(circle at top left, #1e3a8a 0%, #0f172a 100%);
         color: #ffffff;
     }
 
-    /* Estilo para Título y Slogan Cursivo Profesional */
     .fuente-cursiva {
         font-family: 'Dancing Script', cursive !important;
         background: linear-gradient(90deg, #60a5fa, #a78bfa);
@@ -28,7 +25,6 @@ st.markdown("""
         text-align: center;
     }
 
-    /* Contenedores Glassmorphism */
     .stTabs, .stForm, [data-testid="stExpander"], .p-card {
         background: rgba(255, 255, 255, 0.05) !important;
         backdrop-filter: blur(12px);
@@ -39,7 +35,6 @@ st.markdown("""
         color: white !important;
     }
 
-    /* Títulos con Degradado */
     .welcome-text { 
         background: linear-gradient(90deg, #60a5fa, #a78bfa);
         -webkit-background-clip: text;
@@ -47,22 +42,11 @@ st.markdown("""
         font-weight: 800; font-size: 38px; margin-bottom: 10px; 
     }
     
-    /* Forzar visibilidad de textos */
     h1, h2, h3, p, span, label, .stMarkdown { color: #e2e8f0 !important; }
 
-    /* Badges de Estado */
     .badge-paid { background: linear-gradient(90deg, #059669, #10b981); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     .badge-debt { background: linear-gradient(90deg, #dc2626, #f87171); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
 
-    /* Cabeceras de Logística */
-    .state-header {
-        background: rgba(255, 255, 255, 0.1);
-        border-left: 5px solid #3b82f6;
-        color: #60a5fa !important; padding: 12px; border-radius: 8px; margin: 20px 0; font-weight: 700;
-        text-transform: uppercase; letter-spacing: 1px;
-    }
-
-    /* Botones */
     .stButton>button {
         border-radius: 12px !important;
         background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%) !important;
@@ -77,10 +61,8 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
     }
 
-    /* Botón Eliminar */
     .btn-eliminar button { background: linear-gradient(90deg, #ef4444, #b91c1c) !important; }
 
-    /* Barra Lateral */
     [data-testid="stSidebar"] {
         background-color: #0f172a !important;
         border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -144,7 +126,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
             f_cli = st.text_input("Nombre del Cliente")
             f_cor = st.text_input("Correo del Cliente")
             
-            # --- NUEVA OPCIÓN AÑADIDA SIN ALTERAR EL RESTO ---
+            # --- NUEVA OPCIÓN: TIPO DE TRASLADO ---
             f_tipo = st.selectbox("Tipo de Traslado", ["Aéreo", "Marítimo"])
             
             f_pes = st.number_input("Peso Mensajero (Kg)", min_value=0.0, step=0.1)
@@ -154,14 +136,14 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                 if f_id and f_cli and f_cor:
                     nuevo = {
                         "ID_Barra": f_id, "Cliente": f_cli, "Correo": f_cor.lower().strip(), 
-                        "Tipo": f_tipo, # Se añade al registro
+                        "Tipo": f_tipo,
                         "Peso_Mensajero": f_pes, "Peso_Almacen": 0.0, "Validado": False, 
                         "Monto_USD": f_pes*PRECIO_POR_KG, "Estado": "RECIBIDO ALMACEN PRINCIPAL", 
                         "Pago": "PENDIENTE", "Modalidad": f_mod, "Abonado": 0.0, "Fecha_Registro": datetime.now()
                     }
                     st.session_state.inventario.append(nuevo)
                     guardar_datos(st.session_state.inventario, ARCHIVO_DB)
-                    st.success(f"✅ Guía {f_id} registrada como {f_tipo}.")
+                    st.success(f"✅ Guía {f_id} registrada.")
 
     with t_val:
         st.subheader("Báscula de Almacén")
@@ -169,7 +151,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
         if pendientes:
             guia_v = st.selectbox("Seleccione Guía para Pesar:", [p["ID_Barra"] for p in pendientes])
             paq = next(p for p in pendientes if p["ID_Barra"] == guia_v)
-            st.info(f"Cliente: {paq['Cliente']} | Tipo: {paq.get('Tipo', 'Aéreo')} | Peso Reportado: {paq['Peso_Mensajero']} Kg")
+            st.info(f"Cliente: {paq['Cliente']} | Peso Reportado: {paq['Peso_Mensajero']} Kg")
             peso_real = st.number_input("Peso Real en Báscula (Kg)", min_value=0.0, value=float(paq['Peso_Mensajero']), step=0.1)
             if st.button("⚖️ Validar Peso"):
                 paq['Peso_Almacen'] = peso_real
@@ -245,6 +227,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                     st.markdown('</div>', unsafe_allow_html=True)
 
     with t_res:
+        # --- RESTAURADA PESTAÑA DE RESUMEN ORIGINAL ---
         st.subheader("Resumen de Operaciones")
         if st.session_state.inventario:
             df_res = pd.DataFrame(st.session_state.inventario)
@@ -253,7 +236,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
             m2.metric("Paquetes", len(df_res))
             m3.metric("Caja (Abonos)", f"${df_res['Abonado'].sum():.2f}")
 
-# --- 5. PANEL DEL CLIENTE (MANTENIDO) ---
+# --- 5. PANEL DEL CLIENTE ---
 elif st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "cliente":
     u = st.session_state.usuario_identificado
     st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
@@ -288,7 +271,7 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 6. ACCESO (TÍTULO Y SLOGAN AJUSTADOS) ---
+# --- 6. ACCESO ---
 else:
     st.write("<br><br>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
