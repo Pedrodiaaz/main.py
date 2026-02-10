@@ -289,7 +289,7 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                         </div>
                     """, unsafe_allow_html=True)
 
-# --- 5. PANEL DEL CLIENTE (ACTUALIZADO CON PORCENTAJES) ---
+# --- 5. PANEL DEL CLIENTE ---
 elif st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "cliente":
     u = st.session_state.usuario_identificado
     st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
@@ -303,10 +303,6 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                 badge = "badge-paid" if p.get('Pago') == "PAGADO" else "badge-debt"
                 icon_cli = "✈️" if p.get('Tipo_Traslado') == "Aéreo" else "🚢"
                 
-                # Cálculo de porcentajes
-                porc_pagado = (abo / tot * 100) if tot > 0 else 0
-                porc_falta = 100 - porc_pagado if tot > 0 else 0
-
                 st.markdown(f"""
                     <div class="p-card">
                         <div style="display:flex; justify-content:space-between;">
@@ -318,18 +314,8 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                             ⚖️ <b>Medida:</b> {p['Peso_Almacen'] if p['Validado'] else p['Peso_Mensajero']:.1f} {uni}
                         </div>
                 """, unsafe_allow_html=True)
-                
                 st.progress(abo/tot if tot > 0 else 0)
-                
-                # Fila de Porcentajes y Restante
-                st.markdown(f"""
-                    <div style="display:flex; justify-content:space-between; font-size:12px; margin-top:5px; color:#cbd5e1;">
-                        <span>✅ Pagado: {porc_pagado:.1f}%</span>
-                        <span>⏳ Pendiente: {porc_falta:.1f}%</span>
-                    </div>
-                    <div style="margin-top:10px; font-weight:bold;">Restan: ${ (tot-abo):.2f}</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"Restan: **${(tot-abo):.2f}**</div>", unsafe_allow_html=True)
 
 # --- 6. LOGIN ---
 else:
