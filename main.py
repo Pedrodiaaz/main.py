@@ -211,7 +211,6 @@ def render_admin_dashboard():
                 paq_ed = next((p for p in st.session_state.inventario if p["ID_Barra"] == guia_ed), None)
                 
                 if paq_ed:
-                    # REESTABLECIMIENTO DE INTERFAZ DE EDICIÓN ANTERIOR
                     with st.container():
                         st.markdown(f"### Editando: {paq_ed['ID_Barra']}")
                         c1, c2, c3 = st.columns(3)
@@ -254,8 +253,9 @@ def render_admin_dashboard():
             df_f = df_res[df_res['Estado'] == est_k]
             st.markdown(f'<div class="header-resumen">{est_l} ({len(df_f)})</div>', unsafe_allow_html=True)
             for _, r in df_f.iterrows():
-                tipo_icon = "✈️" if r.get('Tipo_Traslado') == "Aéreo" else "🚢"
-                st.markdown(f'<div class="resumen-row"><div class="resumen-id">{tipo_icon} {r["ID_Barra"]}</div><div class="resumen-cliente">{r["Cliente"]}</div><div class="resumen-data">${float(r["Abonado"]):.2f}</div></div>', unsafe_allow_html=True)
+                # Icono dinámico según traslado
+                icon = "✈️" if r.get('Tipo_Traslado') == "Aéreo" else "🚢"
+                st.markdown(f'<div class="resumen-row"><div class="resumen-id">{icon} {r["ID_Barra"]}</div><div class="resumen-cliente">{r["Cliente"]}</div><div class="resumen-data">${float(r["Abonado"]):.2f}</div></div>', unsafe_allow_html=True)
 
 # --- 4. FUNCIÓN INTERFAZ (CLIENTE) ---
 
@@ -273,10 +273,13 @@ def render_client_dashboard():
             with (c1 if i % 2 == 0 else c2):
                 tot = float(p.get('Monto_USD', 0.0)); abo = float(p.get('Abonado', 0.0))
                 badge = "badge-paid" if p.get('Pago') == "PAGADO" else "badge-debt"
+                # Lógica de ICONO para el CLIENTE
+                tipo_icon = "✈️" if p.get('Tipo_Traslado') == "Aéreo" else "🚢"
+                
                 st.markdown(f"""
                     <div class="p-card">
                         <div style="display:flex; justify-content:space-between;">
-                            <span style="color:#60a5fa; font-weight:bold;">#{p['ID_Barra']}</span>
+                            <span style="color:#60a5fa; font-weight:bold;">{tipo_icon} #{p['ID_Barra']}</span>
                             <span class="{badge}">{p.get('Pago')}</span>
                         </div>
                         <div style="font-size:0.9em; margin:10px 0;">📍 <b>Estatus:</b> {p['Estado']}</div>
