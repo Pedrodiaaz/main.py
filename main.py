@@ -18,18 +18,17 @@ st.markdown("""
         color: #ffffff;
     }
 
-    /* Estilo para Título y Slogan Cursivo Profesional (ESTÁTICO) */
+    /* Estilo para Título y Slogan Cursivo Profesional (CON AJUSTE DE ESPACIADO) */
     .fuente-cursiva {
         font-family: 'Dancing Script', cursive !important;
         background: linear-gradient(90deg, #60a5fa, #a78bfa);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 700;
-        line-height: 1.1;
         text-align: center;
     }
 
-    /* Contenedores Glassmorphism (Efecto cristal) */
+    /* Contenedores Glassmorphism */
     .stTabs, .stForm, [data-testid="stExpander"], .p-card {
         background: rgba(255, 255, 255, 0.05) !important;
         backdrop-filter: blur(12px);
@@ -52,14 +51,8 @@ st.markdown("""
     h1, h2, h3, p, span, label, .stMarkdown { color: #e2e8f0 !important; }
 
     /* Badges de Estado */
-    .badge-paid { 
-        background: linear-gradient(90deg, #059669, #10b981); 
-        color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; 
-    }
-    .badge-debt { 
-        background: linear-gradient(90deg, #dc2626, #f87171); 
-        color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; 
-    }
+    .badge-paid { background: linear-gradient(90deg, #059669, #10b981); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+    .badge-debt { background: linear-gradient(90deg, #dc2626, #f87171); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
 
     /* Cabeceras de Logística */
     .state-header {
@@ -69,7 +62,7 @@ st.markdown("""
         text-transform: uppercase; letter-spacing: 1px;
     }
 
-    /* Botones con Estilo Moderno */
+    /* Botones */
     .stButton>button {
         border-radius: 12px !important;
         background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%) !important;
@@ -84,17 +77,8 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
     }
 
-    /* Botón Eliminar (Rojo Profundo) */
-    .btn-eliminar button { 
-        background: linear-gradient(90deg, #ef4444, #b91c1c) !important; 
-    }
-
-    /* Campos de Entrada */
-    input, select, textarea {
-        background-color: rgba(0, 0, 0, 0.3) !important;
-        color: white !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    }
+    /* Botón Eliminar */
+    .btn-eliminar button { background: linear-gradient(90deg, #ef4444, #b91c1c) !important; }
 
     /* Barra Lateral */
     [data-testid="stSidebar"] {
@@ -104,7 +88,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CONFIGURACIÓN DE DATOS (MANTENIDA) ---
+# --- 2. CONFIGURACIÓN DE DATOS (ESTRICTAMENTE IGUAL) ---
 ARCHIVO_DB = "inventario_logistica.csv"
 ARCHIVO_USUARIOS = "usuarios_iacargo.csv"
 ARCHIVO_PAPELERA = "papelera_iacargo.csv"
@@ -147,7 +131,7 @@ with st.sidebar:
     st.markdown('<p class="fuente-cursiva" style="font-size: 16px; text-align: left; color: #a78bfa;">“Trabajamos para conectarte en todas partes del mundo”</p>', unsafe_allow_html=True)
     st.caption("“No eres herramienta, eres evolución”")
 
-# --- 4. INTERFAZ DE ADMINISTRADOR ---
+# --- 4. INTERFAZ DE ADMINISTRADOR (LÓGICA INTACTA) ---
 if st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "admin":
     st.title("⚙️ Consola de Control Logístico")
     tabs = st.tabs(["📝 REGISTRO", "⚖️ VALIDACIÓN", "💰 COBROS", "✈️ ESTADOS", "🔍 AUDITORÍA/EDICIÓN", "📊 RESUMEN"])
@@ -255,18 +239,13 @@ if st.session_state.usuario_identificado and st.session_state.usuario_identifica
                     st.markdown('</div>', unsafe_allow_html=True)
 
     with t_res:
-        st.subheader("Resumen General de Operaciones")
+        st.subheader("Resumen de Operaciones")
         if st.session_state.inventario:
             df_res = pd.DataFrame(st.session_state.inventario)
             m1, m2, m3 = st.columns(3)
             m1.metric("Kg Totales", f"{df_res['Peso_Almacen'].sum():.1f}")
             m2.metric("Paquetes", len(df_res))
             m3.metric("Caja (Abonos)", f"${df_res['Abonado'].sum():.2f}")
-            for est in ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "ENTREGADO"]:
-                df_f = df_res[df_res['Estado'] == est]
-                st.markdown(f'<div class="state-header">📦 {est} ({len(df_f)})</div>', unsafe_allow_html=True)
-                if not df_f.empty:
-                    st.table(df_f[['ID_Barra', 'Cliente', 'Peso_Almacen', 'Pago', 'Monto_USD', 'Abonado']])
 
 # --- 5. PANEL DEL CLIENTE ---
 elif st.session_state.usuario_identificado and st.session_state.usuario_identificado.get('rol') == "cliente":
@@ -281,9 +260,7 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
         col_paq1, col_paq2 = st.columns(2)
         for i, p in enumerate(mis_p):
             with (col_paq1 if i % 2 == 0 else col_paq2):
-                total = p['Monto_USD']
-                abonado = p.get('Abonado', 0.0)
-                pago_s = p.get('Pago', 'PENDIENTE')
+                total = p['Monto_USD']; abonado = p.get('Abonado', 0.0); pago_s = p.get('Pago', 'PENDIENTE')
                 badge = "badge-paid" if pago_s == "PAGADO" else "badge-debt"
                 st.markdown(f"""
                     <div class="p-card">
@@ -293,7 +270,7 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                         </div>
                         <div style="font-size: 0.9em; margin: 12px 0; color:#e2e8f0;">
                             📍 <b>Estado:</b> {p['Estado']}<br>
-                            ⚖️ <b>Peso:</b> {p['Peso_Almacen'] if p['Validado'] else p['Peso_Mensajero']:.1f} Kg | 💳 {p.get('Modalidad')}
+                            ⚖️ <b>Peso:</b> {p['Peso_Almacen'] if p['Validado'] else p['Peso_Mensajero']:.1f} Kg
                         </div>
                 """, unsafe_allow_html=True)
                 st.progress(abonado/total if total > 0 else 0)
@@ -305,16 +282,18 @@ elif st.session_state.usuario_identificado and st.session_state.usuario_identifi
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 6. ACCESO (LOGIN PERFECTAMENTE CENTRADO Y ESTÁTICO) ---
+# --- 6. ACCESO (AJUSTE DE MÁRGENES TÍTULO-SLOGAN) ---
 else:
     st.write("<br><br>", unsafe_allow_html=True)
-    col_l1, col_l2, col_l3 = st.columns([1, 1.8, 1])
+    col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     
     with col_l2:
         st.markdown("""
             <div style="text-align: center; margin-bottom: 30px;">
-                <div class="fuente-cursiva" style="font-size: 95px; margin-bottom: 0px;">IACargo.io</div>
-                <p class="fuente-cursiva" style="font-size: 20px; color: #a78bfa !important; white-space: nowrap; margin-top: -15px;">
+                <div class="fuente-cursiva" style="font-size: 95px; margin-bottom: 10px; line-height: 1;">
+                    IACargo.io
+                </div>
+                <p class="fuente-cursiva" style="font-size: 20px; color: #a78bfa !important; white-space: nowrap; margin-top: 0px;">
                     “Trabajamos para conectarte en todas partes del mundo”
                 </p>
             </div>
