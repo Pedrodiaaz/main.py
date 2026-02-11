@@ -41,37 +41,41 @@ st.markdown("""
         color: white !important;
     }
 
-    /* --- CIRUGÍA DE PRECISIÓN: BLOQUE AZUL DE CONTRASEÑA (ESTILO IMAGEN) --- */
-    /* 1. Espaciado interno para que el texto no choque con el bloque azul */
+    /* --- CIRUGÍA DE PRECISIÓN: BLOQUE AZUL COMPACTO PARA CONTRASEÑA --- */
+    /* 1. Ajuste del texto para que no se esconda tras el icono */
     div[data-baseweb="input"] input {
-        padding-right: 85px !important; 
+        padding-right: 50px !important; 
     }
     
-    /* 2. El contenedor del ojo se convierte en el bloque azul sólido de 2cm */
+    /* 2. El contenedor del ojo: Cuadrado pequeño ajustado a la derecha */
     div[data-testid="stInputAdornment"] {
-        width: 75px !important; /* Ancho de ~2cm */
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important; /* Azul sólido vibrante */
+        width: 45px !important; /* Ancho quirúrgico y compacto */
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
         height: 100% !important;
         right: 0px !important;
         position: absolute !important;
         justify-content: center !important;
-        border-radius: 0 12px 12px 0 !important; /* Redondeado solo a la derecha */
+        align-items: center !important;
+        border-radius: 0 12px 12px 0 !important; /* Redondeado solo en el borde exterior */
         margin: 0 !important;
         border: none !important;
-        box-shadow: -2px 0 10px rgba(0,0,0,0.2) !important;
+        box-shadow: -2px 0 10px rgba(0,0,0,0.1) !important;
     }
 
-    /* 3. Ajuste del icono (el ojo) dentro del bloque azul */
+    /* 3. Limpieza del botón interno para que el ojo llene el espacio */
     div[data-testid="stInputAdornment"] button {
         width: 100% !important;
         height: 100% !important;
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        color: white !important; /* Aseguramos que el ojo sea blanco */
+        color: white !important;
+        padding: 0 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
     }
     
-    /* Efecto de hover solo sobre el bloque azul */
     div[data-testid="stInputAdornment"]:hover {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
     }
