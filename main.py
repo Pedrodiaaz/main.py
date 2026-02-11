@@ -66,6 +66,12 @@ st.markdown("""
         color: white !important;
     }
 
+    /* Estilo de Notificación Individual */
+    .notif-item {
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 8px 0;
+    }
+
     /* Limpieza de inputs y botones */
     div[data-testid="stInputAdornment"] { display: none !important; }
     div[data-baseweb="input"] { border-radius: 10px !important; border: none !important; background-color: #f8fafc !important; }
@@ -99,6 +105,7 @@ st.markdown("""
 ARCHIVO_DB = "inventario_logistica.csv"
 ARCHIVO_USUARIOS = "usuarios_iacargo.csv"
 ARCHIVO_PAPELERA = "papelera_iacargo.csv"
+ARCHIVO_NOTIF = "notificaciones_iacargo.csv" # Nueva persistencia para notificaciones
 PRECIO_POR_UNIDAD = 5.0
 
 def hash_password(password): return hashlib.sha256(str.encode(password)).hexdigest()
@@ -116,9 +123,21 @@ def guardar_datos(datos, archivo): pd.DataFrame(datos).to_csv(archivo, index=Fal
 if 'inventario' not in st.session_state: st.session_state.inventario = cargar_datos(ARCHIVO_DB)
 if 'papelera' not in st.session_state: st.session_state.papelera = cargar_datos(ARCHIVO_PAPELERA)
 if 'usuarios' not in st.session_state: st.session_state.usuarios = cargar_datos(ARCHIVO_USUARIOS)
+if 'notificaciones' not in st.session_state: st.session_state.notificaciones = cargar_datos(ARCHIVO_NOTIF)
 if 'usuario_identificado' not in st.session_state: st.session_state.usuario_identificado = None
 if 'id_actual' not in st.session_state: st.session_state.id_actual = generar_id_unico()
 if 'landing_vista' not in st.session_state: st.session_state.landing_vista = True
+
+# Función quirúrgica para registrar la notificación
+def registrar_notificacion(correo, id_barra, nuevo_estado):
+    notif = {
+        "Correo": correo.lower().strip(),
+        "ID": id_barra,
+        "Estado": nuevo_estado,
+        "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M")
+    }
+    st.session_state.notificaciones.append(notif)
+    guardar_datos(st.session_state.notificaciones, ARCHIVO_NOTIF)
 
 # --- 3. FUNCIONES DE DASHBOARD ---
 def render_admin_dashboard():
@@ -126,6 +145,7 @@ def render_admin_dashboard():
     tabs = st.tabs(["📝 REGISTRO", "⚖️ VALIDACIÓN", "💰 COBROS", "✈️ ESTADOS", "🔍 AUDITORÍA/EDICIÓN", "📊 RESUMEN"])
     t_reg, t_val, t_cob, t_est, t_aud, t_res = tabs
 
+    # (Funciones t_reg, t_val, t_cob, t_aud, t_res permanecen idénticas a tu original)
     with t_reg:
         st.subheader("Registro de Entrada")
         f_tra = st.selectbox("Tipo de Traslado", ["Aéreo", "Marítimo", "Envio Nacional"], key="admin_reg_tra")
@@ -176,11 +196,13 @@ def render_admin_dashboard():
         st.subheader("✈️ Estatus de Logística")
         if st.session_state.inventario:
             sel_e = st.selectbox("Seleccione Guía:", [p["ID_Barra"] for p in st.session_state.inventario], key="status_sel")
-            # --- ESTADO ACTUALIZADO SEGÚN TU SOLICITUD ---
             n_st = st.selectbox("Nuevo Estado:", ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "RECIBIDO EN ALMACEN DE DESTINO", "ENTREGADO"])
             if st.button("Actualizar Estatus"):
                 for p in st.session_state.inventario:
-                    if p["ID_Barra"] == sel_e: p["Estado"] = n_st
+                    if p["ID_Barra"] == sel_e: 
+                        if p["Estado"] != n_st: # Solo si hay un cambio real
+                            p["Estado"] = n_st
+                            registrar_notificacion(p["Correo"], p["ID_Barra"], n_st) # Registro de notificación
                 guardar_datos(st.session_state.inventario, ARCHIVO_DB); st.rerun()
 
     with t_aud:
@@ -234,10 +256,38 @@ def render_admin_dashboard():
 
 def render_client_dashboard():
     u = st.session_state.usuario_identificado
-    st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
+    
+    # --- INTERVENCIÓN QUIRÚRGICA: CABECERA CON CAMPANA ---
+    col_welcome, col_notif = st.columns([0.8, 0.2])
+    
+    with col_welcome:
+        st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
+    
+    with col_notif:
+        # Filtrar notificaciones del usuario actual
+        mis_notif = [n for n in st.session_state.notificaciones if n["Correo"] == u["correo"].lower().strip()]
+        cant = len(mis_notif)
+        
+        # Desplegable de campana
+        with st.popover(f"🔔 Notificaciones ({cant})"):
+            st.markdown("### Historial de Cambios")
+            if not mis_notif:
+                st.write("No tienes actualizaciones recientes.")
+            else:
+                for n in reversed(mis_notif): # Ver las más recientes primero
+                    st.markdown(f"""
+                        <div class="notif-item">
+                            <small style="color:#60a5fa;">{n['Fecha']}</small><br>
+                            <b>Guía: {n['ID']}</b><br>
+                            <span>Estado: {n['Estado']}</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+    # (Resto del dashboard de cliente idéntico al original)
     busq_cli = st.text_input("🔍 Buscar mis paquetes por código de barra:", key="cli_search_input")
     mis_p = [p for p in st.session_state.inventario if str(p.get('Correo', '')).lower() == str(u.get('correo', '')).lower()]
     if busq_cli: mis_p = [p for p in mis_p if busq_cli.lower() in str(p.get('ID_Barra')).lower()]
+    
     if not mis_p:
         st.info("Actualmente no tienes envíos registrados en el sistema.")
     else:
@@ -302,7 +352,7 @@ if st.session_state.usuario_identificado is None:
                     le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
                     if st.form_submit_button("Entrar"):
                         if le == "admin" and lp == "admin123":
-                            st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
+                            st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin", "correo": "admin@iacargo.io"}; st.rerun()
                         u = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
                         if u: st.session_state.usuario_identificado = u; st.rerun()
                         else: st.error("Credenciales incorrectas")
@@ -315,7 +365,7 @@ if st.session_state.usuario_identificado is None:
             if st.button("⬅️ Volver"):
                 st.session_state.landing_vista = True; st.rerun()
 
-# CASO 2: LOGUEADO (SIN SIDEBAR)
+# CASO 2: LOGUEADO
 else:
     st.markdown(f"""
         <div class="logout-container">
