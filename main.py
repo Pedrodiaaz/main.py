@@ -41,36 +41,42 @@ st.markdown("""
         color: white !important;
     }
 
-    /* --- CIRUGÍA DE PRECISIÓN: BLOQUE DE BOTÓN DE 2CM --- */
-    /* Ajustamos el input para que el texto no se oculte tras el bloque del botón */
+    /* --- CIRUGÍA DE PRECISIÓN: BLOQUE AZUL DE CONTRASEÑA (ESTILO IMAGEN) --- */
+    /* 1. Espaciado interno para que el texto no choque con el bloque azul */
     div[data-baseweb="input"] input {
-        padding-right: 80px !important; 
+        padding-right: 85px !important; 
     }
     
-    /* Convertimos el contenedor del ojo en un bloque sólido de 2cm al final */
+    /* 2. El contenedor del ojo se convierte en el bloque azul sólido de 2cm */
     div[data-testid="stInputAdornment"] {
-        width: 75px !important; /* Aproximadamente 2cm */
-        background: rgba(255, 255, 255, 0.1) !important; /* Fondo sutil para el bloque */
-        border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
+        width: 75px !important; /* Ancho de ~2cm */
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important; /* Azul sólido vibrante */
         height: 100% !important;
         right: 0px !important;
         position: absolute !important;
         justify-content: center !important;
-        border-radius: 0 12px 12px 0 !important;
+        border-radius: 0 12px 12px 0 !important; /* Redondeado solo a la derecha */
         margin: 0 !important;
+        border: none !important;
+        box-shadow: -2px 0 10px rgba(0,0,0,0.2) !important;
     }
 
-    /* Limpiamos el botón interno para que llene el bloque de 2cm */
+    /* 3. Ajuste del icono (el ojo) dentro del bloque azul */
     div[data-testid="stInputAdornment"] button {
         width: 100% !important;
         height: 100% !important;
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        margin: 0 !important;
+        color: white !important; /* Aseguramos que el ojo sea blanco */
+    }
+    
+    /* Efecto de hover solo sobre el bloque azul */
+    div[data-testid="stInputAdornment"]:hover {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
     }
 
-    /* --- ESTILO DE BOTONES --- */
+    /* --- ESTILO DE BOTONES GENERALES --- */
     .stButton button, div[data-testid="stForm"] button {
         background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
         color: white !important;
