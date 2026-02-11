@@ -11,10 +11,33 @@ st.set_page_config(page_title="IACargo.io | Evolution System", layout="wide", pa
 
 st.markdown("""
     <style>
+    /* Fondo Global */
     .stApp {
         background: radial-gradient(circle at top left, #1e3a8a 0%, #0f172a 100%);
         color: #ffffff;
     }
+    
+    /* Ocultar la barra lateral por completo */
+    [data-testid="stSidebar"] {
+        display: none;
+    }
+    
+    /* Botón de Cerrar Sesión en la esquina superior derecha */
+    .logout-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 8px 15px;
+        border-radius: 30px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
     .logo-animado {
         font-style: italic !important;
         font-family: 'Georgia', serif;
@@ -31,6 +54,8 @@ st.markdown("""
         50% { transform: scale(1.03); opacity: 1; }
         100% { transform: scale(1); opacity: 0.9; }
     }
+
+    /* Contenedores y Formularios */
     .stTabs, .stForm, [data-testid="stExpander"], .p-card {
         background: rgba(255, 255, 255, 0.05) !important;
         backdrop-filter: blur(12px);
@@ -41,7 +66,7 @@ st.markdown("""
         color: white !important;
     }
 
-    /* --- ELIMINACIÓN QUIRÚRGICA DEL BOTÓN DEL OJO --- */
+    /* Limpieza de inputs y botones */
     div[data-testid="stInputAdornment"] { display: none !important; }
     div[data-baseweb="input"] { border-radius: 10px !important; border: none !important; background-color: #f8fafc !important; }
     div[data-baseweb="input"] input { color: #1e293b !important; }
@@ -53,25 +78,22 @@ st.markdown("""
         font-weight: 700 !important;
         text-transform: uppercase !important;
         border: none !important;
-        padding: 10px 24px !important;
         transition: all 0.3s ease !important;
         width: 100% !important;
     }
     
     .stButton button:hover { transform: translateY(-2px) !important; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4) !important; }
 
+    /* Estilos de tablas y métricas */
     .metric-container { background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 15px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.2); }
-    .resumen-row { background-color: #ffffff !important; color: #1e293b !important; padding: 15px; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; border-radius: 8px; }
+    .resumen-row { background-color: #ffffff !important; color: #1e293b !important; padding: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; border-radius: 8px; }
     .welcome-text { background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; font-size: 38px; margin-bottom: 10px; }
-    .badge-paid { background: linear-gradient(90deg, #059669, #10b981); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
-    .badge-debt { background: linear-gradient(90deg, #dc2626, #f87171); color: white !important; padding: 5px 12px; border-radius: 12px; font-weight: bold; font-size: 11px; }
     
     h1, h2, h3, p, span, label, .stMarkdown { color: #e2e8f0 !important; }
-    [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid rgba(255, 255, 255, 0.1); }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. GESTIÓN DE DATOS ---
+# --- 2. GESTIÓN DE DATOS (Mantenida intacta) ---
 ARCHIVO_DB = "inventario_logistica.csv"
 ARCHIVO_USUARIOS = "usuarios_iacargo.csv"
 ARCHIVO_PAPELERA = "papelera_iacargo.csv"
@@ -79,7 +101,6 @@ PRECIO_POR_UNIDAD = 5.0
 
 def hash_password(password): return hashlib.sha256(str.encode(password)).hexdigest()
 def generar_id_unico(): return f"IAC-{''.join(random.choices(string.ascii_uppercase + string.digits, k=6))}"
-
 def cargar_datos(archivo):
     if os.path.exists(archivo):
         try:
@@ -88,7 +109,6 @@ def cargar_datos(archivo):
             return df.to_dict('records')
         except: return []
     return []
-
 def guardar_datos(datos, archivo): pd.DataFrame(datos).to_csv(archivo, index=False)
 
 if 'inventario' not in st.session_state: st.session_state.inventario = cargar_datos(ARCHIVO_DB)
@@ -98,7 +118,7 @@ if 'usuario_identificado' not in st.session_state: st.session_state.usuario_iden
 if 'id_actual' not in st.session_state: st.session_state.id_actual = generar_id_unico()
 if 'landing_vista' not in st.session_state: st.session_state.landing_vista = True
 
-# --- 3. INTERFAZ ADMINISTRADOR (SIN CAMBIOS) ---
+# --- 3. FUNCIONES DE DASHBOARD (Administrador y Cliente intactas) ---
 def render_admin_dashboard():
     st.title("⚙️ Consola de Control Logístico")
     tabs = st.tabs(["📝 REGISTRO", "⚖️ VALIDACIÓN", "💰 COBROS", "✈️ ESTADOS", "🔍 AUDITORÍA/EDICIÓN", "📊 RESUMEN"])
@@ -209,14 +229,12 @@ def render_admin_dashboard():
                     icon_t = "✈️" if r.get('Tipo_Traslado') == "Aéreo" else "🚢"
                     st.markdown(f'<div class="resumen-row"><div style="color:#2563eb; font-weight:800;">{icon_t} {r["ID_Barra"]}</div><div style="color:#1e293b; flex-grow:1; margin-left:15px;">{r["Cliente"]}</div><div style="color:#475569; font-weight:700;">${float(r["Abonado"]):.2f}</div></div>', unsafe_allow_html=True)
 
-# --- 4. INTERFAZ CLIENTE (SIN CAMBIOS) ---
 def render_client_dashboard():
     u = st.session_state.usuario_identificado
     st.markdown(f'<div class="welcome-text">Bienvenido, {u["nombre"]}</div>', unsafe_allow_html=True)
     busq_cli = st.text_input("🔍 Buscar mis paquetes por código de barra:", key="cli_search_input")
     mis_p = [p for p in st.session_state.inventario if str(p.get('Correo', '')).lower() == str(u.get('correo', '')).lower()]
     if busq_cli: mis_p = [p for p in mis_p if busq_cli.lower() in str(p.get('ID_Barra')).lower()]
-
     if not mis_p:
         st.info("Actualmente no tienes envíos registrados en el sistema.")
     else:
@@ -253,11 +271,12 @@ def render_client_dashboard():
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 5. LÓGICA DE NAVEGACIÓN Y ACCESO ---
+# --- 4. LÓGICA DE NAVEGACIÓN Y ACCESO ---
+
+# CASO 1: NO ESTÁ LOGUEADO
 if st.session_state.usuario_identificado is None:
-    # VISTA 1: LANDING PAGE
     if st.session_state.landing_vista:
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.markdown("""
@@ -268,11 +287,8 @@ if st.session_state.usuario_identificado is None:
                 </div>
             """, unsafe_allow_html=True)
             if st.button("🚀 INGRESAR AL SISTEMA", use_container_width=True):
-                st.session_state.landing_vista = False
-                st.rerun()
+                st.session_state.landing_vista = False; st.rerun()
             st.markdown("<br><p style='text-align:center; opacity:0.6;'>No eres herramienta, eres evolución.</p>", unsafe_allow_html=True)
-    
-    # VISTA 2: LOGIN/REGISTRO
     else:
         c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
@@ -281,7 +297,7 @@ if st.session_state.usuario_identificado is None:
             with t1:
                 with st.form("login_form"):
                     le = st.text_input("Correo"); lp = st.text_input("Clave", type="password")
-                    if st.form_submit_button("Entrar", use_container_width=True):
+                    if st.form_submit_button("Entrar"):
                         if le == "admin" and lp == "admin123":
                             st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
                         u = next((u for u in st.session_state.usuarios if u['correo'] == le.lower().strip() and u['password'] == hash_password(lp)), None)
@@ -294,19 +310,26 @@ if st.session_state.usuario_identificado is None:
                         st.session_state.usuarios.append({"nombre": n, "correo": e.lower().strip(), "password": hash_password(p), "rol": "cliente"})
                         guardar_datos(st.session_state.usuarios, ARCHIVO_USUARIOS); st.success("Cuenta creada."); st.rerun()
             if st.button("⬅️ Volver"):
+                st.session_state.landing_vista = True; st.rerun()
+
+# CASO 2: LOGUEADO (SIN SIDEBAR)
+else:
+    # Renderizamos el botón de cerrar sesión en la parte superior derecha usando HTML/CSS
+    # Y lo vinculamos a un botón de Streamlit para que funcione la lógica
+    st.markdown(f"""
+        <div class="logout-container">
+            <span style="color:#60a5fa; font-weight:bold; font-size:0.9em;">Socio: {st.session_state.usuario_identificado['nombre']}</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # El botón real de Streamlit debe estar en algún lugar, lo ponemos al final o al inicio pero flotante
+    with st.container():
+        cols = st.columns([8, 1])
+        with cols[1]:
+            if st.button("SALIR 🚪"):
+                st.session_state.usuario_identificado = None
                 st.session_state.landing_vista = True
                 st.rerun()
-else:
-    # SIDEBAR Y DASHBOARDS
-    with st.sidebar:
-        if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
-        else: st.markdown('<h1 class="logo-animado" style="font-size: 30px;">IACargo.io</h1>', unsafe_allow_html=True)
-        st.write("---")
-        st.success(f"Socio: {st.session_state.usuario_identificado['nombre']}")
-        if st.button("Cerrar Sesión"):
-            st.session_state.usuario_identificado = None
-            st.session_state.landing_vista = True
-            st.rerun()
-    
+
     if st.session_state.usuario_identificado.get('rol') == "admin": render_admin_dashboard()
     else: render_client_dashboard()
