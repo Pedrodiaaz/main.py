@@ -41,16 +41,18 @@ st.markdown("""
         color: white !important;
     }
 
-    /* --- CIRUGÍA AL CAMPO DE CONTRASEÑA --- */
-    /* Reducimos el padding derecho para que el texto no se corte antes de tiempo */
+    /* --- CIRUGÍA DE PRECISIÓN AL CAMPO DE CONTRASEÑA --- */
+    /* Ajustamos el input para que el texto aproveche casi todo el ancho */
     div[data-baseweb="input"] input {
-        padding-right: 45px !important;
+        padding-right: 35px !important; 
     }
     
-    /* Compactamos el contenedor del botón del ojo */
+    /* Arrinconamos el botón del ojo a un espacio de ~1cm (30px) al final */
     div[data-testid="stInputAdornment"] {
-        width: 40px !important;
-        right: 0px !important;
+        width: 30px !important;
+        right: 8px !important;
+        justify-content: center !important;
+        margin-left: 0px !important;
     }
 
     /* --- ESTILO DE BOTONES --- */
