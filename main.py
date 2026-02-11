@@ -41,18 +41,33 @@ st.markdown("""
         color: white !important;
     }
 
-    /* --- CIRUGÍA DE PRECISIÓN AL CAMPO DE CONTRASEÑA --- */
-    /* Ajustamos el input para que el texto aproveche casi todo el ancho */
+    /* --- CIRUGÍA DE PRECISIÓN: BLOQUE DE BOTÓN DE 2CM --- */
+    /* Ajustamos el input para que el texto no se oculte tras el bloque del botón */
     div[data-baseweb="input"] input {
-        padding-right: 35px !important; 
+        padding-right: 80px !important; 
     }
     
-    /* Arrinconamos el botón del ojo a un espacio de ~1cm (30px) al final */
+    /* Convertimos el contenedor del ojo en un bloque sólido de 2cm al final */
     div[data-testid="stInputAdornment"] {
-        width: 30px !important;
-        right: 8px !important;
+        width: 75px !important; /* Aproximadamente 2cm */
+        background: rgba(255, 255, 255, 0.1) !important; /* Fondo sutil para el bloque */
+        border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
+        height: 100% !important;
+        right: 0px !important;
+        position: absolute !important;
         justify-content: center !important;
-        margin-left: 0px !important;
+        border-radius: 0 12px 12px 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Limpiamos el botón interno para que llene el bloque de 2cm */
+    div[data-testid="stInputAdornment"] button {
+        width: 100% !important;
+        height: 100% !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
     }
 
     /* --- ESTILO DE BOTONES --- */
