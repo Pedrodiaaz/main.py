@@ -176,8 +176,8 @@ def render_admin_dashboard():
         st.subheader("✈️ Estatus de Logística")
         if st.session_state.inventario:
             sel_e = st.selectbox("Seleccione Guía:", [p["ID_Barra"] for p in st.session_state.inventario], key="status_sel")
-            # --- SE AÑADIÓ 'RECIBIDO EN DESTINO' AQUÍ ---
-            n_st = st.selectbox("Nuevo Estado:", ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "RECIBIDO EN DESTINO", "ENTREGADO"])
+            # --- ESTADO ACTUALIZADO SEGÚN TU SOLICITUD ---
+            n_st = st.selectbox("Nuevo Estado:", ["RECIBIDO ALMACEN PRINCIPAL", "EN TRANSITO", "RECIBIDO EN ALMACEN DE DESTINO", "ENTREGADO"])
             if st.button("Actualizar Estatus"):
                 for p in st.session_state.inventario:
                     if p["ID_Barra"] == sel_e: p["Estado"] = n_st
