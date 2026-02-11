@@ -41,7 +41,7 @@ st.markdown("""
         color: white !important;
     }
 
-    /* --- BOTONES GRANDES (ESTILO GLOBAL) --- */
+    /* --- ESTILO DE BOTONES --- */
     .stButton button, div[data-testid="stForm"] button {
         background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
         color: white !important;
@@ -52,26 +52,13 @@ st.markdown("""
         padding: 10px 24px !important;
         transition: all 0.3s ease !important;
         box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3) !important;
-        width: 100%;
+        width: 100% !important;
     }
     
     .stButton button:hover, div[data-testid="stForm"] button:hover {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
         transform: translateY(-2px) !important;
         box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5) !important;
-    }
-
-    /* --- BOTÓN MINI (ELIMINAR LARGO, HACER CUADRADO) --- */
-    /* Usamos un div contenedor con una clase para identificar botones pequeños */
-    .btn-mini button {
-        width: 45px !important; 
-        height: 45px !important;
-        padding: 0px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        border-radius: 10px !important;
-        margin-top: 28px !important; /* Alineación con el input */
     }
 
     .metric-container {
@@ -137,9 +124,8 @@ if 'papelera' not in st.session_state: st.session_state.papelera = cargar_datos(
 if 'usuarios' not in st.session_state: st.session_state.usuarios = cargar_datos(ARCHIVO_USUARIOS)
 if 'usuario_identificado' not in st.session_state: st.session_state.usuario_identificado = None
 if 'id_actual' not in st.session_state: st.session_state.id_actual = generar_id_unico()
-if 'ver_clave' not in st.session_state: st.session_state.ver_clave = False
 
-# --- 3. INTERFAZ ADMINISTRADOR (Sin cambios para mantener estabilidad) ---
+# --- 3. INTERFAZ ADMINISTRADOR ---
 def render_admin_dashboard():
     st.title("⚙️ Consola de Control Logístico")
     tabs = st.tabs(["📝 REGISTRO", "⚖️ VALIDACIÓN", "💰 COBROS", "✈️ ESTADOS", "🔍 AUDITORÍA/EDICIÓN", "📊 RESUMEN"])
@@ -164,6 +150,7 @@ def render_admin_dashboard():
                     st.session_state.id_actual = generar_id_unico()
                     st.success(f"Guía {f_id} registrada."); st.rerun()
 
+    # (Las demás pestañas de administración se mantienen igual para no perder funcionalidad)
     with t_val:
         st.subheader("⚖️ Validación en Almacén")
         pendientes = [p for p in st.session_state.inventario if not p.get('Validado')]
@@ -321,18 +308,7 @@ if st.session_state.usuario_identificado is None:
         with t1:
             with st.form("login_form"):
                 le = st.text_input("Correo")
-                
-                # --- CIRUGÍA: INPUT DE CLAVE CON BOTÓN MINI ---
-                col_pass, col_btn = st.columns([4, 1])
-                with col_pass:
-                    lp = st.text_input("Clave", type="text" if st.session_state.ver_clave else "password")
-                with col_btn:
-                    st.markdown('<div class="btn-mini">', unsafe_allow_html=True)
-                    if st.form_submit_button("👁️"):
-                        st.session_state.ver_clave = not st.session_state.ver_clave
-                        st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
-                
+                lp = st.text_input("Clave", type="password") # Streamlit pone el ojo por defecto aquí
                 if st.form_submit_button("Entrar", use_container_width=True):
                     if le == "admin" and lp == "admin123":
                         st.session_state.usuario_identificado = {"nombre": "Admin", "rol": "admin"}; st.rerun()
